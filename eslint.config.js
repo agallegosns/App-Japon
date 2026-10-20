@@ -26,6 +26,11 @@ export default tseslint.config(
     },
   },
   {
+    files: ['cloudflare/**/*.js'],
+    languageOptions: { globals: globals.serviceworker },
+    extends: [js.configs.recommended],
+  },
+  {
     files: ['scripts/**/*.mjs'],
     languageOptions: { globals: globals.node },
     extends: [js.configs.recommended],

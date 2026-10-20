@@ -40,6 +40,10 @@ existen en cada iPhone y en las copias de seguridad que hagas.
   guarda en el móvil; también puedes escribir la que te aplique tu banco. Sin conexión usa la última guardada.
 - **Inicio:** un **calendario** del viaje. Cada día marca si hay vuelo (avión), actividades, reservas o cambio de hotel, y debajo se
   ve automáticamente la agenda del día seleccionado (hoy, o el primer día con plan antes del viaje).
+- **Compartir con tu pareja:** Ajustes → «Compartir con tu pareja». Un móvil crea un **código secreto** y el otro lo escribe: desde
+  ese momento lo que añadáis (reservas, actividades, trenes, documentos…) aparece en los dos. Los datos viajan **cifrados**; el servidor
+  (un Worker gratuito de Cloudflare propio) solo guarda datos ilegibles. Se sincroniza solo al abrir la app, al recuperar la conexión y
+  poco después de cada cambio. Sin conexión, cada móvil sigue funcionando y se pone al día al volver.
 - **Menú superior:** el botón **¥ ⇄ €** está en todas las pantallas y abre el conversor sin salir de donde estás.
 - **Traductor:** cámara japonés → español. Necesita Internet (la foto no sale del móvil; solo el texto reconocido
   se envía a MyMemory, límite gratuito ≈ 5 000 caracteres/día).

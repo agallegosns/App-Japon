@@ -12,6 +12,8 @@ import { SettingsPage } from '../features/settings/SettingsPage';
 import { TranslatorPage } from '../features/translator/TranslatorPage';
 import { TripFormPage } from '../features/trip/TripFormPage';
 import { TripHomePage } from '../features/trip/TripHomePage';
+import { getDb } from '../storage/db';
+import { startAutoSync } from '../sync/service';
 import { LoadingState } from '../ui/States';
 import { ToastProvider } from '../ui/Toast';
 import { BottomNav } from './BottomNav';
@@ -71,6 +73,7 @@ function AnimatedRoutes() {
 }
 
 export function App() {
+  useEffect(() => startAutoSync(getDb()), []);
   return (
     <HashRouter>
       <ToastProvider>

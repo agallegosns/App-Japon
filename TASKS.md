@@ -143,6 +143,17 @@ iPhone · **[pendiente]** sin hacer · **[bloqueado]** depende de algo externo.
 - [dispositivo] Que el buscador de estaciones y los campos de vagón y asiento sean cómodos en el iPhone.
 - [propuesta] Compartir los datos con la pareja (sincronización) y repositorio privado: pendiente de decisión del usuario.
 
+## v0.9.0 — Compartir con la pareja
+
+- [hecho] Worker propio en Cloudflare (buzón cifrado, KV `DATA`) desplegado por el usuario y comprobado con `/v1/ping`.
+- [hecho] Código secreto de 20 caracteres, cifrado AES-GCM, sala derivada por hash; registros y adjuntos cifrados.
+- [hecho] Motor de sincronización por elemento (el último cambio gana), borrados con marcas, adjuntos, tandas; unirse con confirmación.
+- [hecho] Pantalla «Compartir con tu pareja» (crear, unirse, mostrar/ocultar, enviar, sincronizar, dejar de compartir, borrar de la nube) y estado en el inicio.
+- [hecho] Probado: cifrado, servidor (simulado y en el motor real de Cloudflare en local), 2 móviles simulados, navegador real.
+- [dispositivo] Probar con los dos iPhones y el Worker real: crear código, unirse, editar en uno y ver en el otro, adjuntos.
+- [dispositivo] Comprobar el límite gratuito de KV (1.000 escrituras al día) con un uso normal.
+- [bloqueado] Notificaciones push cuando la pareja cambia algo (requieren más servidor): no se hace.
+
 ## Siguientes fases (no empezar sin petición)
 
 - [pendiente] Mapa con conexión (marcadores de actividades y alojamientos, ubicación GPS).

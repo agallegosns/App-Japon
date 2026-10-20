@@ -328,3 +328,119 @@ describe('trenes entre ciudades', () => {
     expect(within(agenda).getByText('Con Suica · llega a las 12:20')).toBeInTheDocument();
   });
 });
+
+describe('compartir con tu pareja', () => {
+  const ORIGIN = 'https://agallegosns.github.io';
+  async function nube() {
+    const { default: worker } = await import('../../cloudflare/worker.js');
+    const { FakeKV } = await import('../test/fakeKv');
+    const { SyncApi } = await import('../sync/api');
+    const { resetSyncForTests } = await import('../sync/service');
+    const kv = new FakeKV();
+    const api = new SyncApi('https://sync.test', async (input, init) =>
+      worker.fetch(new Request(input, { ...init, headers: { ...(init?.headers as Record<string, string>), Origin: ORIGIN } }), { DATA: kv }),
+    );
+    resetSyncForTests(api);
+    return { kv, api };
+  }
+  afterEach(async () => {
+    const { resetSyncForTests } = await import('../sync/service');
+    resetSyncForTests();
+  });
+
+  it('crear el código sube los datos cifrados y deja ver, ocultar y copiar el código', async () => {
+    const { kv } = await nube();
+    const db = getDb();
+    const { saveTrip } = await import('../storage/trips');
+    const { createBooking, emptyBooking } = await import('../storage/bookings');
+    await saveTrip(db, { name: 'Viaje secreto', startDate: '2030-05-01', endDate: '2030-05-02', cities: [], tz: 'Asia/Tokyo' });
+    await createBooking(db, { ...emptyBooking('alojamiento'), name: 'Hotel Privado' });
+
+    window.location.hash = '#/ajustes';
+    render(<App />);
+    expect(await screen.findByText('Compartir con tu pareja')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Crear código para compartir' }));
+    expect(await screen.findByText('Compartiendo con tu pareja')).toBeInTheDocument();
+    expect(await screen.findByText(/^[0-9A-Z]{5}(-[0-9A-Z]{5}){3}$/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Ocultar código' }));
+    expect(screen.getByText('•••••-•••••-•••••-•••••')).toBeInTheDocument();
+
+    await waitFor(() => expect(kv.store.size).toBeGreaterThanOrEqual(4)); // viaje, 2 días y reserva
+    const todo = JSON.stringify([...kv.store.values()].map((e) => e.value));
+    expect(todo).not.toContain('Hotel Privado');
+    expect(todo).not.toContain('Viaje secreto');
+  });
+
+  it('un código mal escrito da un error claro', async () => {
+    await nube();
+    window.location.hash = '#/ajustes';
+    render(<App />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Ya tengo un código de mi pareja' }));
+    await userEvent.type(screen.getByLabelText('Código del viaje'), 'ABC');
+    await userEvent.click(screen.getByRole('button', { name: 'Unirme' }));
+    expect(await screen.findByText(/El código no es válido/)).toBeInTheDocument();
+  });
+
+  it('unirse con el código de tu pareja descarga su viaje en un móvil vacío', async () => {
+    const { api } = await nube();
+    const { freshDb } = await import('../test/helpers');
+    const { deriveCredentials, generateCode } = await import('../sync/crypto');
+    const { syncNow } = await import('../sync/engine');
+    const { saveTrip } = await import('../storage/trips');
+    const { createBooking, emptyBooking } = await import('../storage/bookings');
+    const code = generateCode();
+    const pareja = freshDb();
+    await saveTrip(pareja, { name: 'Viaje de los dos', startDate: '2030-05-01', endDate: '2030-05-02', cities: [], tz: 'Asia/Tokyo' });
+    await createBooking(pareja, { ...emptyBooking('restaurante'), name: 'Cena compartida' });
+    await syncNow(pareja, api, await deriveCredentials(code));
+    await pareja.delete();
+
+    window.location.hash = '#/ajustes';
+    render(<App />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Ya tengo un código de mi pareja' }));
+    await userEvent.type(screen.getByLabelText('Código del viaje'), code.toLowerCase());
+    await userEvent.click(screen.getByRole('button', { name: 'Unirme' }));
+    await waitFor(async () => expect(await getDb().bookings.count()).toBe(1));
+    expect((await getDb().bookings.toArray())[0]?.name).toBe('Cena compartida');
+    expect((await getDb().trips.toArray())[0]?.name).toBe('Viaje de los dos');
+  });
+
+  it('si este móvil ya tiene datos, pide confirmación antes de sustituirlos', async () => {
+    const { api } = await nube();
+    const { freshDb } = await import('../test/helpers');
+    const { deriveCredentials, generateCode } = await import('../sync/crypto');
+    const { syncNow } = await import('../sync/engine');
+    const { createBooking, emptyBooking } = await import('../storage/bookings');
+    const code = generateCode();
+    const pareja = freshDb();
+    await createBooking(pareja, { ...emptyBooking('otro'), name: 'De mi pareja' });
+    await syncNow(pareja, api, await deriveCredentials(code));
+    await pareja.delete();
+    await createBooking(getDb(), { ...emptyBooking('otro'), name: 'Mío, se perderá' });
+
+    window.location.hash = '#/ajustes';
+    render(<App />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Ya tengo un código de mi pareja' }));
+    await userEvent.type(screen.getByLabelText('Código del viaje'), code);
+    await userEvent.click(screen.getByRole('button', { name: 'Unirme' }));
+    expect(await screen.findByText('Este móvil ya tiene datos')).toBeInTheDocument();
+    expect((await getDb().bookings.toArray()).map((b) => b.name)).toEqual(['Mío, se perderá']); // todavía no se ha tocado nada
+    await userEvent.click(screen.getByRole('button', { name: 'Sustituir por los de la nube' }));
+    await waitFor(async () => expect((await getDb().bookings.toArray()).map((b) => b.name)).toEqual(['De mi pareja']));
+  });
+
+  it('dejar de compartir conserva los datos y vuelve a mostrar las opciones', async () => {
+    await nube();
+    const { createBooking, emptyBooking } = await import('../storage/bookings');
+    await createBooking(getDb(), { ...emptyBooking('otro'), name: 'Se queda' });
+    window.location.hash = '#/ajustes';
+    render(<App />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Crear código para compartir' }));
+    await screen.findByText('Compartiendo con tu pareja');
+    await userEvent.click(screen.getByText('Opciones'));
+    await userEvent.click(screen.getByRole('button', { name: 'Dejar de compartir en este móvil' }));
+    await userEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Dejar de compartir' }));
+    expect(await screen.findByRole('button', { name: 'Crear código para compartir' })).toBeInTheDocument();
+    expect(await getDb().bookings.count()).toBe(1);
+  });
+});

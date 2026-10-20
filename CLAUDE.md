@@ -67,6 +67,11 @@ comprobar en el iPhone, dale los pasos exactos (qué pulsar y qué debería ver)
   permite `self` y esos dos servicios: si se añade otro servicio externo, hay que añadirlo ahí y justificarlo.
 - **Tests sin red:** `src/test/setup.ts` sustituye `fetch` en todos los tests; en GitHub Actions hay Internet y una respuesta real
   rompería los importes esperados. Cada test que necesite `fetch` pone el suyo.
+- **Compartir con la pareja** (`src/sync/`, `cloudflare/worker.js`): cifrado de extremo a extremo (AES-GCM; el código de 20 caracteres
+  es el único secreto y vive solo en el móvil). El servidor es un Worker propio con un KV llamado `DATA` y NO tiene ninguna clave.
+  Por elemento gana el cambio más reciente; los borrados viajan como marcas (`tombstones`). Cualquier función nueva que modifique datos
+  debe pasar por Dexie (el hook actualiza `updatedAt`) y, si borra, llamar a `markDeleted`. Unirse con datos propios exige confirmación.
+  «Borrar todos los datos» NO se propaga: deja de compartir. El código del Worker es público y no lleva secretos.
 - **Vocabulario:** en la interfaz se dice «actividad» (nunca «parada»).
 - **Notificaciones:** no hay push (requeriría servidor). Los avisos se hacen exportando un `.ics` al Calendario del
   iPhone (`src/models/ics.ts`, `src/features/settings/calendarActions.ts`). Horas en UTC, sin VTIMEZONE.

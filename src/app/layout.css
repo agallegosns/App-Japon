@@ -1560,3 +1560,22 @@
   background: var(--c-info-soft);
   color: var(--c-info);
 }
+
+/* Compartir con la pareja */
+.sync-code {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px dashed var(--c-border-strong);
+  border-radius: var(--r-md);
+  background: var(--c-surface-2);
+}
+.sync-code-text {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  word-break: break-all;
+}

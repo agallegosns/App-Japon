@@ -32,11 +32,14 @@ import { StatusTag } from '../../ui/StatusTag';
 import { useToast } from '../../ui/Toast';
 import { exportAndShare } from './backupActions';
 import { shareCalendar } from './calendarActions';
+import { SyncCard } from './SyncCard';
+import { stopSharing } from '../../sync/service';
 
 export function SettingsPage() {
   return (
     <>
       <PageHeader title="Ajustes" back="/" />
+      <SyncCard />
       <CalendarCard />
       <BackupCard />
       <ImportCard />
@@ -399,6 +402,8 @@ function DangerCard() {
         onConfirm={async () => {
           try {
             await deleteAllData(getDb());
+            // Borrar los datos de este móvil no debe borrar los de tu pareja: se deja de compartir en vez de propagar el borrado.
+            stopSharing();
             toast.show('Datos borrados');
           } catch (e) {
             toast.error(errorMessage(e));

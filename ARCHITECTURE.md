@@ -182,3 +182,24 @@ seguridad en versiones anteriores. `npm audit` informa de `sharp`/`onnxruntime-n
   `api.frankfurter.dev`; `script-src 'self' 'wasm-unsafe-eval'` (necesario para el lector de japonés); `object-src 'none'`. GitHub Pages
   no permite cabeceras HTTP propias, por eso va como `<meta>` (no cubre `frame-ancestors`). Los datos del viaje viven solo en el
   almacenamiento de cada iPhone y nunca se suben a GitHub.
+
+## Decisiones de la v0.9.0 — compartir con la pareja
+
+- **Servidor:** Cloudflare Worker (`cloudflare/worker.js`, público, sin secretos) + KV `DATA`. Plan gratuito sin tarjeta: 100.000
+  peticiones/día y, en KV, 100.000 lecturas y 1.000 escrituras al día. Cada registro es una clave `sala:tipo:id` con metadatos
+  `{u, d}` (fecha y marca de borrado); los adjuntos cifrados son `sala:blob:id` (máx. 20 MB). El Worker valida salas, claves y tamaños,
+  acepta peticiones del navegador solo desde `https://agallegosns.github.io` (variable opcional `ALLOWED_ORIGINS`) y, al escribir, no
+  sobrescribe un registro más reciente.
+- **Cifrado:** `code → material = "nihon-trip|v1|" + código`. Sala = SHA-256("room|" + material) (64 hex; lo único que ve el
+  servidor). Clave = HKDF-SHA-256 → AES-GCM 256, `extractable: false`. Cada registro: IV aleatoria de 12 bytes y AAD = su nombre
+  (`bookings:id`), así el servidor no puede cambiar ni intercambiar registros sin que se detecte. Adjuntos: IV + cifrado, AAD `blob:id`.
+- **Lo que el servidor sí ve:** nombres de claves (tipo e id aleatorio), cuántos registros hay, sus fechas de modificación, tamaños y la
+  dirección IP de quien se conecta. No ve nombres de hoteles, fechas, direcciones, precios ni documentos.
+- **Riesgos y límites asumidos:** quien tenga el código lee y escribe los datos (tratarlo como una contraseña; se puede cambiar:
+  «Borrar los datos de la nube» + crear código nuevo). El código se guarda en localStorage del móvil: protege el móvil con código.
+  Los relojes de los móviles deben estar en hora (gana el cambio con fecha más reciente). KV es de consistencia eventual: dos cambios
+  casi simultáneos al mismo elemento pueden tardar una sincronización en converger.
+- **Datos:** esquema v5 (`Day.updatedAt`, tabla `tombstones`). Un hook de Dexie actualiza `updatedAt` en cualquier modificación; los
+  datos recibidos se escriben en una transacción marcada (`noTouchTx`) para conservar la fecha original.
+- **Pruebas:** el motor se prueba con el código REAL del Worker y un KV simulado (15 escenarios) y el Worker, además, en el motor
+  workerd de Cloudflare en local. No se ha probado todavía contra el Worker desplegado ni con los dos iPhones.

@@ -29,6 +29,7 @@ import { Notice } from '../../ui/Notice';
 import { PageHeader } from '../../ui/PageHeader';
 import { EmptyState, ErrorState, LoadingState } from '../../ui/States';
 import { StatusTag } from '../../ui/StatusTag';
+import { useSync } from '../../sync/service';
 import { DayAgenda } from './DayAgenda';
 import { TripCalendar } from './TripCalendar';
 import { pendingInfo } from './pendingInfo';
@@ -231,8 +232,9 @@ function OfflineStatus() {
       .then(setInfo)
       .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
   }, []);
+  const sync = useSync();
   return (
-    <Card title="Estado sin conexión">
+    <Card title="Estado y sincronización">
       <div className="stack">
         <div className="spread">
           <span>Conexión</span>
@@ -252,6 +254,20 @@ function OfflineStatus() {
           ) : (
             <StatusTag tone="warning">No concedido</StatusTag>
           )}
+        </div>
+        <div className="spread">
+          <span>Compartir con tu pareja</span>
+          <Link to="/ajustes" className="sync-status-link">
+            {sync.config === null ? (
+              <StatusTag>No activado</StatusTag>
+            ) : sync.error ? (
+              <StatusTag tone="danger">Error</StatusTag>
+            ) : sync.syncing ? (
+              <StatusTag tone="info">Sincronizando…</StatusTag>
+            ) : (
+              <StatusTag tone="success">{sync.config.lastSyncAt ? 'Sincronizado' : 'Pendiente'}</StatusTag>
+            )}
+          </Link>
         </div>
         <LinkButton to="/sin-conexion" variant="secondary" block icon={<CloudDownload size={18} />}>
           Preparar Japón sin conexión
