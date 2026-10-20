@@ -65,6 +65,11 @@ jobs:
       - name: Convertir Helsinki-NLP/opus-mt-ja-es a ONNX cuantizado (q8)
         working-directory: tjs
         run: |
+          # La comprobación estricta de ONNX (full_check) rechaza el decodificador fusionado de Marian por una
+          # diferencia de rango en la inferencia de formas. Se relaja SOLO ese caso; el paso siguiente comprueba
+          # de verdad que el modelo traduce con Transformers.js antes de publicarlo.
+          sed -i 's/if "No Op registered for" in str(e):/if "No Op registered for" in str(e) or "ShapeInferenceError" in str(e):/' scripts/utils.py
+          grep -n 'ShapeInferenceError' scripts/utils.py
           python -m scripts.convert --quantize --modes q8 --model_id Helsinki-NLP/opus-mt-ja-es
           ls -lR models/Helsinki-NLP/opus-mt-ja-es
       - name: Preparar carpeta para Transformers.js
@@ -81,6 +86,34 @@ jobs:
           test -f "$out/onnx/decoder_model_merged_quantized.onnx"
           ls -l "$out" "$out/onnx"
           find "$out" -type f -size +95M -print -exec false {} +
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verificar que el modelo traduce con Transformers.js 3.8.1
+        run: |
+          mkdir verify && cd verify
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund @huggingface/transformers@3.8.1
+          cat > verify.mjs <<'JS'
+          import { env, pipeline } from '@huggingface/transformers';
+          env.allowRemoteModels = false;
+          env.allowLocalModels = true;
+          env.localModelPath = new URL('../', import.meta.url).pathname;
+          const t = await pipeline('translation', 'opus-mt-ja-es', { dtype: 'q8' });
+          let ok = 0;
+          const samples = ['駅はどこですか？', 'この電車は京都に行きますか？', 'お会計をお願いします。', 'トイレはどこですか？'];
+          for (const s of samples) {
+            const out = await t(s, { max_new_tokens: 64 });
+            const text = out[0]?.translation_text ?? '';
+            console.log(`${s} -> ${text}`);
+            if (/[a-záéíóúñ]/i.test(text) && !/[\u3040-\u30ff\u4e00-\u9faf]/.test(text)) ok++;
+          }
+          if (ok !== samples.length) {
+            console.error(`Solo ${ok}/${samples.length} traducciones válidas`);
+            process.exit(1);
+          }
+          JS
+          node verify.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: model

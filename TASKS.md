@@ -16,10 +16,10 @@ iPhone · **[pendiente]** sin hacer · **[bloqueado]** depende de algo externo.
   (97 % y 100 %). **[dispositivo]**
 - [hecho] c) Traducción con Transformers.js (directo ja→es o ja→en→es), detección de cierre de Safari.
   **[dispositivo]** — no verificable en el entorno de desarrollo (Hugging Face bloqueado).
-- [hecho] d) Mapas MapLibre + PMTiles desde archivo local en IndexedDB. **[dispositivo]**
+- [hecho] d) Mapas MapLibre + PMTiles desde archivo local en IndexedDB. Extracto de Kioto generado (6,2 MB)
+  y verificado en Chromium sin red. **[dispositivo]**
 - [hecho] e) GPS, f) Cámara (input capture vs getUserMedia), g) Conexión. **[dispositivo]**
-- [bloqueado] Ejecutar el workflow «Recursos offline» (extracto de Kioto + conversión de opus-mt-ja-es).
-  Ver estado en la sección «Recursos offline».
+- Workflow «Recursos offline»: ver la sección «Recursos offline».
 
 ## Fase 2 — Interfaz y navegación
 
@@ -55,7 +55,11 @@ iPhone · **[pendiente]** sin hacer · **[bloqueado]** depende de algo externo.
 
 ## Recursos offline (workflow manual)
 
-- [pendiente] Ejecutar «Recursos offline» en Actions y volver a desplegar `main`.
+- [hecho] Extracto PMTiles del centro de Kioto (6,2 MB, Protomaps 4.15) en la rama `offline-assets`.
+- [hecho] Primer intento de conversión de opus-mt-ja-es: la exportación a ONNX funcionó, pero la validación
+  estricta rechazó el decodificador cuantizado (`ShapeInferenceError`). Corregido: se relaja solo ese caso y el
+  workflow ahora comprueba que el modelo traduce de verdad con Transformers.js antes de publicarlo.
+- [pendiente] Resultado del segundo intento de conversión (ver resumen de la sesión / Actions).
 
 ## Siguientes fases (no empezar sin petición)
 
