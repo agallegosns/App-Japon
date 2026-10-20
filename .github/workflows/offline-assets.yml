@@ -2,7 +2,6 @@
 # y los guarda en la rama "offline-assets". El workflow de CI los copia en cada despliegue.
 # Así un despliegue futuro no depende de servicios externos.
 #  - Extracto PMTiles del centro de Kioto (datos © OpenStreetMap, ODbL; teselas Protomaps).
-#  - Modelo Helsinki-NLP/opus-mt-ja-es convertido a ONNX cuantizado (licencia CC-BY 4.0).
 name: Recursos offline
 
 on:
@@ -10,10 +9,6 @@ on:
     inputs:
       map:
         description: Generar el extracto de mapa
-        type: boolean
-        default: true
-      model:
-        description: Convertir el modelo de traducción
         type: boolean
         default: true
 
@@ -46,91 +41,9 @@ jobs:
             kyoto-centro.pmtiles
             kyoto-centro.source.txt
 
-  model:
-    if: inputs.model
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - name: Descargar scripts de conversión de Transformers.js 3.8.1
-        run: |
-          git clone --depth 1 --branch 3.8.1 https://github.com/huggingface/transformers.js.git tjs
-      - name: Instalar dependencias (PyTorch CPU)
-        working-directory: tjs
-        run: |
-          python -m pip install --upgrade pip
-          pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cpu
-          pip install -r scripts/requirements.txt sentencepiece==0.2.0 sacremoses==0.1.1
-      - name: Convertir Helsinki-NLP/opus-mt-ja-es a ONNX cuantizado (q8)
-        working-directory: tjs
-        run: |
-          # La comprobación estricta de ONNX (full_check) rechaza el decodificador fusionado de Marian por una
-          # diferencia de rango en la inferencia de formas. Se relaja SOLO ese caso; el paso siguiente comprueba
-          # de verdad que el modelo traduce con Transformers.js antes de publicarlo.
-          sed -i 's/if "No Op registered for" in str(e):/if "No Op registered for" in str(e) or "ShapeInferenceError" in str(e):/' scripts/utils.py
-          grep -n 'ShapeInferenceError' scripts/utils.py
-          python -m scripts.convert --quantize --modes q8 --model_id Helsinki-NLP/opus-mt-ja-es
-          ls -lR models/Helsinki-NLP/opus-mt-ja-es
-      - name: Preparar carpeta para Transformers.js
-        run: |
-          src=tjs/models/Helsinki-NLP/opus-mt-ja-es
-          out=opus-mt-ja-es
-          mkdir -p "$out/onnx"
-          for f in config.json generation_config.json tokenizer.json tokenizer_config.json quantize_config.json; do
-            if [ -f "$src/$f" ]; then cp "$src/$f" "$out/"; fi
-          done
-          cp "$src"/onnx/*_quantized.onnx "$out/onnx/"
-          test -f "$out/tokenizer.json"
-          test -f "$out/onnx/encoder_model_quantized.onnx"
-          test -f "$out/onnx/decoder_model_merged_quantized.onnx"
-          rm -f "$out"/onnx/decoder_model_quantized.onnx "$out"/onnx/decoder_with_past_model_quantized.onnx
-          ls -l "$out" "$out/onnx"
-          du -sh "$out"
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Verificar que el modelo traduce con Transformers.js 3.8.1
-        run: |
-          mkdir verify && cd verify
-          npm init -y >/dev/null
-          npm install --no-audit --no-fund @huggingface/transformers@3.8.1
-          cat > verify.mjs <<'JS'
-          import { env, pipeline } from '@huggingface/transformers';
-          env.allowRemoteModels = false;
-          env.allowLocalModels = true;
-          env.localModelPath = new URL('../', import.meta.url).pathname;
-          const t = await pipeline('translation', 'opus-mt-ja-es', { dtype: 'q8' });
-          let ok = 0;
-          const samples = ['駅はどこですか？', 'この電車は京都に行きますか？', 'お会計をお願いします。', 'トイレはどこですか？'];
-          for (const s of samples) {
-            const out = await t(s, { max_new_tokens: 64 });
-            const text = out[0]?.translation_text ?? '';
-            console.log(`${s} -> ${text}`);
-            if (/[a-záéíóúñ]/i.test(text) && !/[\u3040-\u30ff\u4e00-\u9faf]/.test(text)) ok++;
-          }
-          if (ok !== samples.length) {
-            console.error(`Solo ${ok}/${samples.length} traducciones válidas`);
-            process.exit(1);
-          }
-          JS
-          node verify.mjs
-      - name: Comprobar el límite de GitHub Pages (100 MB por archivo)
-        run: |
-          big=$(find opus-mt-ja-es -type f -size +95M)
-          if [ -n "$big" ]; then
-            echo "::error::El modelo traduce, pero estos archivos superan 95 MB y GitHub Pages no puede servirlos:"
-            ls -l $big
-            exit 1
-          fi
-      - uses: actions/upload-artifact@v4
-        with:
-          name: model
-          path: opus-mt-ja-es
-
   publish:
-    needs: [map, model]
-    if: always() && (needs.map.result == 'success' || needs.model.result == 'success')
+    needs: [map]
+    if: needs.map.result == 'success'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -148,24 +61,16 @@ jobs:
             git rm -rf --quiet .
             git clean -fdx
           fi
-          mkdir -p site/models
-      - if: needs.map.result == 'success'
-        uses: actions/download-artifact@v4
+          mkdir -p site
+      - uses: actions/download-artifact@v4
         with:
           name: map
           path: site
-      - if: needs.model.result == 'success'
-        uses: actions/download-artifact@v4
-        with:
-          name: model
-          path: site/models/opus-mt-ja-es
       - name: Licencias y atribución
         run: |
           {
             echo "kyoto-centro.pmtiles: datos © colaboradores de OpenStreetMap, licencia ODbL 1.0 (https://www.openstreetmap.org/copyright)."
             echo "Teselas generadas por Protomaps (https://protomaps.com)."
-            echo "models/opus-mt-ja-es: Helsinki-NLP/opus-mt-ja-es (OPUS-MT), licencia CC-BY 4.0,"
-            echo "convertido a ONNX cuantizado con los scripts de Transformers.js 3.8.1."
           } > site/LICENCIAS.txt
       - name: Guardar en la rama offline-assets
         run: |

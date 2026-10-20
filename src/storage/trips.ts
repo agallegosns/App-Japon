@@ -3,6 +3,7 @@ import { newId } from '../models/id';
 import type { Day, Trip } from '../models/types';
 import type { NihonDB } from './db';
 import { recordChange } from './meta';
+import { markDeleted } from './tombstones';
 import { ValidationError, type FieldErrors } from './validation';
 
 export type TripInput = Pick<Trip, 'name' | 'startDate' | 'endDate' | 'cities' | 'tz'>;
@@ -33,7 +34,7 @@ export async function saveTrip(db: NihonDB, input: TripInput): Promise<Trip> {
   const errors = validateTrip(input);
   if (Object.keys(errors).length) throw new ValidationError(errors);
   const cities = input.cities.map((c) => c.trim()).filter(Boolean);
-  return db.transaction('rw', db.trips, db.days, db.meta, async () => {
+  return db.transaction('rw', db.trips, db.days, db.meta, db.tombstones, async () => {
     const existing = await getTrip(db);
     const now = Date.now();
     const trip: Trip = {
@@ -58,11 +59,14 @@ async function syncDays(db: NihonDB, trip: Trip): Promise<void> {
   const existing = await db.days.where('tripId').equals(trip.id).toArray();
   const byDate = new Map(existing.map((d) => [d.date, d]));
   const toRemove = existing.filter((d) => !dates.includes(d.date)).map((d) => d.id);
-  if (toRemove.length) await db.days.bulkDelete(toRemove);
+  if (toRemove.length) {
+    await db.days.bulkDelete(toRemove);
+    for (const id of toRemove) await markDeleted(db, 'days', id);
+  }
   const defaultCity = trip.cities.length === 1 ? (trip.cities[0] ?? '') : '';
   const toAdd: Day[] = dates
     .filter((date) => !byDate.has(date))
-    .map((date) => ({ id: newId(), tripId: trip.id, date, city: defaultCity, lodgingId: null }));
+    .map((date) => ({ id: newId(), tripId: trip.id, date, city: defaultCity, lodgingId: null, updatedAt: Date.now() }));
   if (toAdd.length) await db.days.bulkAdd(toAdd);
 }
 

@@ -78,6 +78,17 @@ export const SCHEMA_HISTORY: SchemaVersion[] = [
       });
     },
   },
+  {
+    // v5: sincronización con otro móvil: los días llevan fecha de modificación y los borrados dejan una marca (tombstones).
+    version: 5,
+    stores: { tombstones: 'key' },
+    upgrade: async (tx) => {
+      const now = Date.now();
+      await tx.table('days').toCollection().modify((d: Record<string, unknown>) => {
+        if (typeof d.updatedAt !== 'number') d.updatedAt = now;
+      });
+    },
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = SCHEMA_HISTORY[SCHEMA_HISTORY.length - 1]?.version ?? 1;

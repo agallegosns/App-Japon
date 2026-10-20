@@ -38,7 +38,7 @@ jobs:
       - name: Tests
         run: npm test
 
-      - name: Recursos offline (mapa de prueba y modelo de traducción)
+      - name: Recursos offline (mapa de prueba)
         # Se generan una sola vez con el workflow "Recursos offline" y viven en la rama offline-assets.
         # Si aún no existen, la app se publica igual y el Laboratorio muestra el error real.
         run: |

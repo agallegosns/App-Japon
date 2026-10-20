@@ -2,6 +2,7 @@ import { newId } from '../models/id';
 import type { Attachment, AttachmentKind } from '../models/types';
 import type { NihonDB } from './db';
 import { recordChange } from './meta';
+import { markDeleted } from './tombstones';
 
 export const MAX_ATTACHMENT_BYTES = 60 * 1024 * 1024;
 
@@ -60,8 +61,9 @@ export async function setAttachmentKind(db: NihonDB, id: string, kind: Attachmen
 }
 
 export async function deleteAttachment(db: NihonDB, id: string): Promise<void> {
-  await db.transaction('rw', db.attachments, db.meta, async () => {
+  await db.transaction('rw', db.attachments, db.meta, db.tombstones, async () => {
     await db.attachments.delete(id);
+    await markDeleted(db, 'attachments', id);
     await recordChange(db);
   });
 }

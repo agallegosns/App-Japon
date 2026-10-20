@@ -2,6 +2,8 @@ import { strFromU8, strToU8, unzipSync, zipSync, type Zippable } from 'fflate';
 import type { Activity, Attachment, Booking, Day, Trip } from '../models/types';
 import type { NihonDB } from './db';
 import { recordChange } from './meta';
+import { sanitizeActivity, sanitizeBooking, sanitizeDay } from './sanitize';
+import { syncKey, type SyncType } from './tombstones';
 import { CURRENT_SCHEMA_VERSION } from './schema';
 
 export const BACKUP_FORMAT = 'nihon-trip-backup';
@@ -156,24 +158,32 @@ export function parseBackup(bytes: Uint8Array): ParsedBackup {
   return {
     manifest: manifest as unknown as BackupManifest,
     trips: arr(data, 'trips') as unknown as Trip[],
-    days: (arr(data, 'days') as unknown as Day[]).map((d) => ({ ...d, lodgingId: d.lodgingId ?? null })),
-    bookings: (arr(data, 'bookings') as unknown as (Booking & { confirmationCode?: string; addressJa?: string })[]).map((b) => {
-      const { confirmationCode: _c, addressJa: _j, ...rest } = b;
-      void [_c, _j];
-      return {
-        ...rest,
-        legs: (Array.isArray(rest.legs) ? rest.legs : []).map((l) => ({ ...l, car: l.car ?? '', seat: l.seat ?? '', fare: l.fare ?? '' })),
-        guests: typeof rest.guests === 'number' ? rest.guests : 2,
-        taxes: Array.isArray(rest.taxes) ? rest.taxes : [],
-      };
-    }),
-    activities: (arr(data, 'activities') as unknown as (Activity & { addressJa?: string })[]).map((a) => {
-      const { addressJa: _j, ...rest } = a;
-      void _j;
-      return { ...rest, allDay: typeof rest.allDay === 'boolean' ? rest.allDay : false };
-    }),
+    days: (arr(data, 'days') as unknown as Day[]).map(sanitizeDay),
+    bookings: (arr(data, 'bookings') as unknown as Booking[]).map(sanitizeBooking),
+    activities: (arr(data, 'activities') as unknown as Activity[]).map(sanitizeActivity),
     attachments,
   };
+}
+
+async function existingKeys(db: NihonDB): Promise<string[]> {
+  const keys: string[] = [];
+  const add = (type: SyncType, ids: string[]) => ids.forEach((id) => keys.push(syncKey(type, id)));
+  add('trips', await db.trips.toCollection().primaryKeys());
+  add('days', await db.days.toCollection().primaryKeys());
+  add('bookings', await db.bookings.toCollection().primaryKeys());
+  add('activities', await db.activities.toCollection().primaryKeys());
+  add('attachments', await db.attachments.toCollection().primaryKeys());
+  return keys;
+}
+
+function incomingKeys(b: ParsedBackup): string[] {
+  return [
+    ...b.trips.map((x) => syncKey('trips', x.id)),
+    ...b.days.map((x) => syncKey('days', x.id)),
+    ...b.bookings.map((x) => syncKey('bookings', x.id)),
+    ...b.activities.map((x) => syncKey('activities', x.id)),
+    ...b.attachments.map((x) => syncKey('attachments', x.id)),
+  ];
 }
 
 export type ImportMode = 'replace' | 'merge';
@@ -197,9 +207,10 @@ function stamp(item: Stamped): number {
  */
 export async function importBackup(db: NihonDB, backup: ParsedBackup, mode: ImportMode): Promise<ImportResult> {
   const result: ImportResult = { added: 0, updated: 0, skipped: 0 };
-  const tables = [db.trips, db.days, db.bookings, db.activities, db.attachments, db.meta];
+  const tables = [db.trips, db.days, db.bookings, db.activities, db.attachments, db.meta, db.tombstones];
   await db.transaction('rw', tables, async () => {
     if (mode === 'replace') {
+      const before = await existingKeys(db);
       await Promise.all([db.trips.clear(), db.days.clear(), db.bookings.clear(), db.activities.clear(), db.attachments.clear()]);
       await db.trips.bulkAdd(backup.trips);
       await db.days.bulkAdd(backup.days);
@@ -208,6 +219,10 @@ export async function importBackup(db: NihonDB, backup: ParsedBackup, mode: Impo
       await db.attachments.bulkAdd(backup.attachments);
       result.added =
         backup.trips.length + backup.days.length + backup.bookings.length + backup.activities.length + backup.attachments.length;
+      // Lo que había y ya no está se da por borrado (para que la sincronización lo quite también del otro móvil).
+      const after = new Set(incomingKeys(backup));
+      await db.tombstones.bulkDelete([...after]);
+      for (const key of before) if (!after.has(key)) await db.tombstones.put({ key, deletedAt: Date.now() });
     } else {
       // Un solo viaje por app: si ya hay uno, se mantiene su id y los días entrantes se reasignan a él.
       const currentTrip = (await db.trips.toArray())[0];
@@ -226,12 +241,12 @@ export async function importBackup(db: NihonDB, backup: ParsedBackup, mode: Impo
           .map((d) => ({ ...d, tripId: currentTrip.id }));
         result.skipped += backup.days.length - days.length;
       } else {
-        await mergeTable(db.trips, backup.trips, result);
+        await mergeTable(db, 'trips', db.trips, backup.trips, result);
       }
-      await mergeTable(db.days, days, result);
-      await mergeTable(db.bookings, backup.bookings, result);
-      await mergeTable(db.activities, backup.activities, result);
-      await mergeTable(db.attachments, backup.attachments, result);
+      await mergeTable(db, 'days', db.days, days, result);
+      await mergeTable(db, 'bookings', db.bookings, backup.bookings, result);
+      await mergeTable(db, 'activities', db.activities, backup.activities, result);
+      await mergeTable(db, 'attachments', db.attachments, backup.attachments, result);
     }
     await recordChange(db);
   });
@@ -243,11 +258,18 @@ interface MergeTable<T extends Stamped> {
   put(item: T): Promise<unknown>;
 }
 
-async function mergeTable<T extends Stamped>(table: MergeTable<T>, items: T[], result: ImportResult): Promise<void> {
+async function mergeTable<T extends Stamped>(
+  db: NihonDB,
+  type: SyncType,
+  table: MergeTable<T>,
+  items: T[],
+  result: ImportResult,
+): Promise<void> {
   for (const item of items) {
     const existing = await table.get(item.id);
     if (!existing) {
       await table.put(item);
+      await db.tombstones.delete(syncKey(type, item.id));
       result.added++;
     } else if (stamp(item) > stamp(existing)) {
       await table.put(item);
@@ -260,8 +282,9 @@ async function mergeTable<T extends Stamped>(table: MergeTable<T>, items: T[], r
 
 /** Borra todos los datos del viaje (no toca la configuración interna). */
 export async function deleteAllData(db: NihonDB): Promise<void> {
-  await db.transaction('rw', [db.trips, db.days, db.bookings, db.activities, db.attachments, db.meta], async () => {
+  await db.transaction('rw', [db.trips, db.days, db.bookings, db.activities, db.attachments, db.meta, db.tombstones], async () => {
     await Promise.all([
+      db.tombstones.clear(),
       db.trips.clear(),
       db.days.clear(),
       db.bookings.clear(),

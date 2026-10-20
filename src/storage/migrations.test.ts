@@ -76,6 +76,13 @@ FIXTURES[4] = {
   bookings: FIXTURES[3]!.bookings!.map((b) => ({ ...b, legs: [] })),
 };
 
+// La versión 5 añade la fecha de modificación de los días y la tabla de borrados (tombstones).
+FIXTURES[5] = {
+  ...FIXTURES[4],
+  days: FIXTURES[4]!.days!.map((d) => ({ ...d, updatedAt: 1 })),
+  tombstones: [{ key: 'bookings:borrada', deletedAt: 5 }],
+};
+
 describe('migraciones de IndexedDB', () => {
   it('cada versión publicada tiene fixture y las versiones son crecientes', () => {
     const versions = SCHEMA_HISTORY.map((v) => v.version);
@@ -107,6 +114,7 @@ describe('migraciones de IndexedDB', () => {
       expect((await db.activities.get('x1'))).toMatchObject({ allDay: false });
       expect((await db.activities.get('x1'))).not.toHaveProperty('addressJa');
       expect((await db.days.get('d1'))?.lodgingId).toBeNull();
+      expect(typeof (await db.days.get('d1'))?.updatedAt).toBe('number');
       expect((await db.activities.where('[date+order]').equals(['2030-04-01', 0]).first())?.title).toBe('Paseo');
       const att = await db.attachments.get('a1');
       expect(Array.from(new Uint8Array(await att!.blob.arrayBuffer()))).toEqual([1, 2, 3]);
@@ -153,7 +161,7 @@ describe('migraciones de IndexedDB', () => {
 
     const db = new NihonDB(name);
     await db.open();
-    expect(db.verno).toBe(4);
+    expect(db.verno).toBe(5);
     const hotel = await db.bookings.get('b1');
     expect(hotel).not.toHaveProperty('addressJa');
     expect(hotel).toMatchObject({ name: 'Hotel', guests: 2, taxes: [] });
@@ -176,7 +184,7 @@ describe('migraciones de IndexedDB', () => {
 
     const db = new NihonDB(name);
     await db.open();
-    expect(db.verno).toBe(4);
+    expect(db.verno).toBe(5);
     const b = await db.bookings.get('b1');
     expect(b?.legs).toEqual([{ ...leg, car: '', seat: '', fare: '' }]);
     await db.delete();

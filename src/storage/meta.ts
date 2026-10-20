@@ -15,6 +15,15 @@ export async function setMeta(db: NihonDB, key: string, value: unknown): Promise
   await db.meta.put({ key, value });
 }
 
+type ChangeListener = () => void;
+const changeListeners = new Set<ChangeListener>();
+
+/** Avisa cuando el usuario cambia datos (la sincronización automática se programa a partir de aquí). */
+export function onLocalChange(cb: ChangeListener): () => void {
+  changeListeners.add(cb);
+  return () => changeListeners.delete(cb);
+}
+
 /** Registra un cambio de datos para el aviso de copia de seguridad. Llamar dentro de una transacción que incluya `meta`. */
 export async function recordChange(db: NihonDB, opts: { attachment?: boolean } = {}): Promise<void> {
   const changes = (await getMeta<number>(db, META.changesSinceBackup)) ?? 0;
@@ -23,6 +32,7 @@ export async function recordChange(db: NihonDB, opts: { attachment?: boolean } =
     const att = (await getMeta<number>(db, META.attachmentsSinceBackup)) ?? 0;
     await setMeta(db, META.attachmentsSinceBackup, att + 1);
   }
+  changeListeners.forEach((cb) => cb());
 }
 
 export interface BackupStatus {

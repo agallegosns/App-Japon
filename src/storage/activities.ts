@@ -4,6 +4,7 @@ import { newId } from '../models/id';
 import { ACTIVITY_STATUSES, DEFAULT_TZ, type Activity, type ActivityStatus } from '../models/types';
 import type { NihonDB } from './db';
 import { recordChange } from './meta';
+import { markDeleted } from './tombstones';
 import { isHttpUrl, ValidationError, type FieldErrors } from './validation';
 
 export type ActivityInput = Omit<Activity, 'id' | 'order' | 'createdAt' | 'updatedAt'>;
@@ -114,10 +115,11 @@ export async function updateActivity(db: NihonDB, id: string, input: ActivityInp
 }
 
 export async function deleteActivity(db: NihonDB, id: string): Promise<void> {
-  await db.transaction('rw', db.activities, db.meta, async () => {
+  await db.transaction('rw', db.activities, db.meta, db.tombstones, async () => {
     const existing = await db.activities.get(id);
     if (!existing) return;
     await db.activities.delete(id);
+    await markDeleted(db, 'activities', id);
     await writeOrder(db, await dayList(db, existing.date));
     await recordChange(db);
   });

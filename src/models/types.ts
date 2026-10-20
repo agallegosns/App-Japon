@@ -29,6 +29,8 @@ export interface Day {
   /** AAAA-MM-DD */
   date: string;
   city: string;
+  /** Última modificación (ms), para sincronizar con otro móvil. */
+  updatedAt: number;
   /**
    * Alojamiento elegido a mano para la noche de este día. null = automático
    * (según check-in y check-out de las reservas de alojamiento).
@@ -171,4 +173,11 @@ export interface Activity {
   order: number;
   createdAt: number;
   updatedAt: number;
+}
+
+/** Marca de que algo se borró en este móvil, para que el borrado llegue al otro móvil al sincronizar. */
+export interface Tombstone {
+  /** «tipo:id», p. ej. «bookings:abc». */
+  key: string;
+  deletedAt: number;
 }

@@ -142,7 +142,7 @@ describe('copias antiguas', () => {
     expect(parsed.bookings[0]).toMatchObject({ guests: 2, taxes: [] });
     expect(parsed.days[0]?.lodgingId).toBeNull();
     expect(JSON.stringify(parsed)).not.toContain('SECRETO');
-    expect(CURRENT_SCHEMA_VERSION).toBe(4);
+    expect(CURRENT_SCHEMA_VERSION).toBe(5);
   });
 });
 

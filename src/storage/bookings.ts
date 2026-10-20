@@ -10,6 +10,7 @@ import {
 } from '../models/types';
 import type { NihonDB } from './db';
 import { recordChange } from './meta';
+import { markDeleted } from './tombstones';
 import { isHttpUrl, validateLdt, ValidationError, type FieldErrors } from './validation';
 
 export type BookingInput = Omit<Booking, 'id' | 'sortAt' | 'createdAt' | 'updatedAt'>;
@@ -167,12 +168,15 @@ export async function updateBooking(db: NihonDB, id: string, input: BookingInput
 
 /** Elimina la reserva, sus adjuntos y desvincula las actividades asociadas. */
 export async function deleteBooking(db: NihonDB, id: string): Promise<void> {
-  await db.transaction('rw', [db.bookings, db.attachments, db.activities, db.days, db.meta], async () => {
-    await db.attachments.where('bookingId').equals(id).delete();
+  await db.transaction('rw', [db.bookings, db.attachments, db.activities, db.days, db.meta, db.tombstones], async () => {
+    const attIds = await db.attachments.where('bookingId').equals(id).primaryKeys();
+    await db.attachments.bulkDelete(attIds);
+    for (const attId of attIds) await markDeleted(db, 'attachments', attId);
     await db.days.filter((d) => d.lodgingId === id).modify({ lodgingId: null });
     const linked = await db.activities.where('bookingId').equals(id).toArray();
     for (const a of linked) await db.activities.update(a.id, { bookingId: null, updatedAt: Date.now() });
     await db.bookings.delete(id);
+    await markDeleted(db, 'bookings', id);
     await recordChange(db);
   });
 }
