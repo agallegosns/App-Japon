@@ -127,3 +127,9 @@ seguridad en versiones anteriores. `npm audit` informa de `sharp`/`onnxruntime-n
 - **Aeropuertos:** lista local de ≈ 110 aeropuertos (España, Europa, Oriente Medio, Asia, Japón, América,
   Oceanía) con código IATA, nombres en español y zona horaria; escrita a mano, no exhaustiva. Si falta uno, se
   escribe a mano. Al elegir aeropuerto se propone su zona horaria para la hora de salida/llegada.
+- **Lectura del japonés en fotos reales:** una sola pasada con el modo automático de Tesseract no encontraba texto en
+  fotos con carteles de color. Ahora se prueban hasta 4 pasadas (imagen normal e invertida, modo de texto disperso y
+  automático; en vertical, bloque vertical y disperso) con la imagen en gris y contraste ampliado, y se suman los
+  bloques que no se solapan. Se descartan párrafos con menos de 25 % de confianza y caracteres sueltos dudosos. Si no se
+  encuentra nada, la pantalla enseña lo único que se leyó para poder diagnosticar. Coste: varios segundos por foto
+  en el móvil (sin medir en iPhone).

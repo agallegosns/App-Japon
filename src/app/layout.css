@@ -313,3 +313,68 @@
   background: #000;
   border-radius: var(--r-md);
 }
+
+/* Aviso de actualización: bien visible y fijo arriba mientras se hace scroll. */
+.global-banners:has(.update-banner) {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 40;
+}
+.update-banner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  border-radius: 16px;
+  background: var(--c-accent);
+  color: var(--c-on-accent);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.22);
+}
+.update-banner-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.update-banner-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+}
+.update-banner-title {
+  display: block;
+  font-size: 1.125rem;
+  line-height: 1.25;
+}
+.update-banner-text {
+  display: block;
+  font-size: 0.9375rem;
+  opacity: 0.95;
+}
+.update-banner .btn {
+  background: #fff;
+  color: var(--c-accent);
+  border-color: #fff;
+  font-weight: 700;
+  min-height: 52px;
+  font-size: 1.0625rem;
+}
+.update-banner-error {
+  font-size: 0.875rem;
+}
+.spin {
+  animation: nt-spin 1s linear infinite;
+}
+@keyframes nt-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spin {
+    animation: none;
+  }
+}

@@ -79,6 +79,11 @@ iPhone · **[pendiente]** sin hacer · **[bloqueado]** depende de algo externo.
 - [dispositivo] Calidad del OCR con fotos reales (carteles, menús, máquinas) y tiempo de la primera carga.
 - [dispositivo] Traducción real con MyMemory desde datos móviles y desde wifi; comprobar el aviso de límite diario.
 - [dispositivo] Revisar el formulario de vuelo con teclado en el iPhone (buscador de aeropuertos).
+- [hecho] Aviso de actualización rojo, grande y fijo arriba, con botón «Actualizar ahora».
+- [hecho] Lector del traductor mejorado tras un fallo real («no se ha encontrado texto japonés» con fotos): contraste,
+  imagen invertida (letras blancas sobre rojo/azul), modos de lectura disperso/automático y suma de resultados.
+  Probado en Chromium con 3 fotos sintéticas (cartel rojo, menú, señal de estación) que antes no daban nada;
+  la lectura sigue siendo imperfecta con fotos borrosas o muy inclinadas (límite de Tesseract).
 - [pendiente] Borrar a mano `src/features/lab/TranslationLab.tsx` y `translation.worker.ts` (están vacíos a propósito).
 
 ## Siguientes fases (no empezar sin petición)

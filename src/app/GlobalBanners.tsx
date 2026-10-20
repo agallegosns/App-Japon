@@ -1,4 +1,4 @@
-import { Download, RefreshCw } from 'lucide-react';
+import { Download, RefreshCw, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '../ui/Button';
 import { Notice } from '../ui/Notice';
@@ -23,32 +23,36 @@ export function GlobalBanners() {
         </Notice>
       )}
       {pwa.needRefresh && pwa.applyUpdate && (
-        <Notice tone="info" role="status">
-          <div className="spread">
-            <span>
-              <strong>Actualización disponible.</strong> Tus datos no se tocan.
+        <div className="update-banner" role="status" aria-live="polite">
+          <div className="update-banner-head">
+            <span className="update-banner-icon" aria-hidden="true">
+              <Sparkles size={22} />
             </span>
-            <Button
-              variant="primary"
-              small
-              icon={updating ? <RefreshCw size={16} /> : <Download size={16} />}
-              disabled={updating}
-              onClick={async () => {
-                setUpdating(true);
-                setUpdateError(null);
-                try {
-                  await pwa.applyUpdate?.();
-                } catch (e) {
-                  setUpdateError(errorMessage(e));
-                  setUpdating(false);
-                }
-              }}
-            >
-              Actualizar
-            </Button>
+            <div>
+              <strong className="update-banner-title">Actualización disponible</strong>
+              <span className="update-banner-text">Hay una versión nueva de la app. Tus datos no se tocan.</span>
+            </div>
           </div>
-          {updateError && <p className="field-error">{updateError}</p>}
-        </Notice>
+          <Button
+            variant="secondary"
+            block
+            icon={updating ? <RefreshCw size={20} className="spin" /> : <Download size={20} />}
+            disabled={updating}
+            onClick={async () => {
+              setUpdating(true);
+              setUpdateError(null);
+              try {
+                await pwa.applyUpdate?.();
+              } catch (e) {
+                setUpdateError(errorMessage(e));
+                setUpdating(false);
+              }
+            }}
+          >
+            {updating ? 'Actualizando…' : 'Actualizar ahora'}
+          </Button>
+          {updateError && <p className="update-banner-error">{updateError}</p>}
+        </div>
       )}
     </div>
   );

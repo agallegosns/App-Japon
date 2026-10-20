@@ -18,6 +18,11 @@ export function hasJapanese(text: string): boolean {
   return HAS_JAPANESE.test(text);
 }
 
+/** Número de caracteres japoneses (kana y kanji) del texto. */
+export function japaneseCharCount(text: string): number {
+  return (text.match(new RegExp(HAS_JAPANESE.source, 'g')) ?? []).length;
+}
+
 const encoder = new TextEncoder();
 
 export function utf8Bytes(text: string): number {

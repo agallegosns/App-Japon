@@ -301,7 +301,7 @@ function AppCard() {
           <dt>Modo sin conexión</dt>
           <dd>{pwa.registerError ? `Error: ${pwa.registerError}` : pwa.registration?.active ? 'Activo' : 'Instalándose…'}</dd>
         </dl>
-        {pwa.needRefresh && <Notice tone="info">Hay una actualización lista. Pulsa «Actualizar» en el aviso superior.</Notice>}
+        {pwa.needRefresh && <Notice tone="info">Hay una actualización lista. Pulsa «Actualizar ahora» en el aviso rojo de arriba.</Notice>}
         <Button
           block
           icon={<Download size={18} />}

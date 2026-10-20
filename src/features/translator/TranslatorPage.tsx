@@ -41,6 +41,7 @@ function Translator() {
   const [status, setStatus] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [translateError, setTranslateError] = useState<string | null>(null);
+  const [rawText, setRawText] = useState('');
   const [items, setItems] = useState<Item[]>([]);
   const [view, setView] = useState<'traduccion' | 'foto'>('traduccion');
   const [email, setEmail] = useState(getStoredEmail);
@@ -123,9 +124,12 @@ function Translator() {
     setPhase('working');
     setError(null);
     setItems([]);
+    setRawText('');
     setView('traduccion');
     try {
-      const blocks = (await engine.current.recognize(canvas, mode, setStatus)).slice(0, MAX_BLOCKS);
+      const result = await engine.current.recognize(canvas, mode, setStatus);
+      setRawText(result.rawText);
+      const blocks = result.blocks.slice(0, MAX_BLOCKS);
       const initial = blocks.map((block, id) => ({ id, block, es: null as string | null }));
       setItems(initial);
       if (initial.length > 0) setItems(await translateItems(initial));
@@ -278,7 +282,14 @@ function Translator() {
 
           {items.length === 0 && !error && (
             <Notice tone="warning">
-              No he encontrado texto japonés. Acércate, evita reflejos y prueba a cambiar entre texto horizontal y vertical.
+              No he encontrado texto japonés. Acércate hasta que las letras se vean grandes, evita reflejos y sombras, y prueba a
+              cambiar entre texto horizontal y vertical.
+              {rawText && (
+                <>
+                  <br />
+                  Lo único que he leído: «{rawText.replace(/\s+/g, ' ').slice(0, 120)}»
+                </>
+              )}
             </Notice>
           )}
           {translateError && (
