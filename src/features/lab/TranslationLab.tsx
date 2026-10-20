@@ -47,7 +47,11 @@ export function TranslationLab() {
   useEffect(() => {
     kvGet<RunFlag>('translation-running').then((f) => f && setCrashed(f)).catch(() => undefined);
     fetch(assetUrl(`${DIRECT_BASE}${DIRECT_MODEL}/config.json`), { method: 'HEAD', cache: 'no-store' })
-      .then((r) => setDirectAvailable(r.ok))
+      .then((r) => {
+        setDirectAvailable(r.ok);
+        // Sin modelo directo publicado, se propone la vía ja→en→es.
+        if (!r.ok) setChoice('pivot');
+      })
       .catch(() => setDirectAvailable(null));
     return () => workerRef.current?.terminate();
   }, []);
@@ -155,7 +159,7 @@ export function TranslationLab() {
       />
       {choice === 'direct' && directAvailable === false && (
         <Notice tone="warning">
-          El modelo directo todavía no está publicado en esta versión (falta ejecutar el workflow «Recursos offline»). La prueba fallará con el error real.
+          El modelo directo no está publicado: su conversión a ONNX no es válida y pesa ≈ 236 MB (ver ARCHITECTURE.md). La prueba fallará con el error real.
         </Notice>
       )}
       <Button variant="primary" block disabled={!!busy} onClick={() => run(false)}>

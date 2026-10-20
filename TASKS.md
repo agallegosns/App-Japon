@@ -14,8 +14,11 @@ iPhone · **[pendiente]** sin hacer · **[bloqueado]** depende de algo externo.
   Verificado en Chromium. **[dispositivo]**
 - [hecho] b) OCR jpn + jpn_vert con recursos autoalojados y cacheados. Verificado en Chromium con y sin red
   (97 % y 100 %). **[dispositivo]**
-- [hecho] c) Traducción con Transformers.js (directo ja→es o ja→en→es), detección de cierre de Safari.
-  **[dispositivo]** — no verificable en el entorno de desarrollo (Hugging Face bloqueado).
+- [hecho] c) Traducción con Transformers.js (ja→en→es con modelos Xenova desde Hugging Face), detección de
+  cierre de Safari. **[dispositivo]** — no verificable en el entorno de desarrollo (Hugging Face bloqueado).
+- [bloqueado] Modelo directo opus-mt-ja-es: la conversión con los scripts de Transformers.js 3.8.1 genera un
+  decodificador que falla al ejecutarse (`Slice: Starts must be a 1-D array`) y pesa 185 MB (más de los
+  100 MB por archivo de GitHub Pages; ≈ 236 MB en total). No se ha publicado. Ver ARCHITECTURE.md.
 - [hecho] d) Mapas MapLibre + PMTiles desde archivo local en IndexedDB. Extracto de Kioto generado (6,2 MB)
   y verificado en Chromium sin red. **[dispositivo]**
 - [hecho] e) GPS, f) Cámara (input capture vs getUserMedia), g) Conexión. **[dispositivo]**
@@ -59,7 +62,9 @@ iPhone · **[pendiente]** sin hacer · **[bloqueado]** depende de algo externo.
 - [hecho] Primer intento de conversión de opus-mt-ja-es: la exportación a ONNX funcionó, pero la validación
   estricta rechazó el decodificador cuantizado (`ShapeInferenceError`). Corregido: se relaja solo ese caso y el
   workflow ahora comprueba que el modelo traduce de verdad con Transformers.js antes de publicarlo.
-- [pendiente] Resultado del segundo intento de conversión (ver resumen de la sesión / Actions).
+- [bloqueado] Conversión de opus-mt-ja-es: tres intentos. La exportación funciona, pero el decodificador
+  fusionado cuantizado no se puede ejecutar (error real de ONNX Runtime en la comprobación de traducción) y su
+  tamaño (185 MB) supera el límite de Pages. El workflow no publica nada que no traduzca o no quepa.
 
 ## Siguientes fases (no empezar sin petición)
 
