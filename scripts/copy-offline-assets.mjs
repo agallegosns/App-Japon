@@ -15,9 +15,6 @@ const copies = [
   ['tesseract.js-core/tesseract-core-lstm.wasm.js', 'tesseract/core/tesseract-core-lstm.wasm.js'],
   ['@tesseract.js-data/jpn/4.0.0_best_int/jpn.traineddata.gz', 'tesseract/lang/jpn.traineddata.gz'],
   ['@tesseract.js-data/jpn_vert/4.0.0_best_int/jpn_vert.traineddata.gz', 'tesseract/lang/jpn_vert.traineddata.gz'],
-  // Traducción (Transformers.js → ONNX Runtime Web): binarios WASM
-  ['@huggingface/transformers/dist/ort-wasm-simd-threaded.jsep.mjs', 'ort/ort-wasm-simd-threaded.jsep.mjs'],
-  ['@huggingface/transformers/dist/ort-wasm-simd-threaded.jsep.wasm', 'ort/ort-wasm-simd-threaded.jsep.wasm'],
   // Visor de PDF (pdf.js): mapas de caracteres CJK, fuentes estándar y decodificadores.
   // Se precachean con la app para abrir PDF japoneses sin conexión.
   ['pdfjs-dist/cmaps', 'pdfjs/cmaps'],
@@ -25,7 +22,7 @@ const copies = [
   ['pdfjs-dist/wasm', 'pdfjs/wasm'],
 ];
 
-for (const dir of ['tesseract', 'ort', 'pdfjs']) rmSync(join(pub, dir), { recursive: true, force: true });
+for (const dir of ['tesseract', 'pdfjs']) rmSync(join(pub, dir), { recursive: true, force: true });
 
 for (const [from, to] of copies) {
   const src = join(nm, from);

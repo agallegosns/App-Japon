@@ -26,6 +26,25 @@ export const SCHEMA_HISTORY: SchemaVersion[] = [
       meta: 'key',
     },
   },
+  {
+    // v2: vuelos con escalas (legs), alojamiento por día (lodgingId) y se eliminan los
+    // localizadores y los adjuntos tipo QR / código de barras (decisión de seguridad).
+    version: 2,
+    stores: {},
+    upgrade: async (tx) => {
+      await tx.table('bookings').toCollection().modify((b: Record<string, unknown>) => {
+        delete b.confirmationCode;
+        if (!Array.isArray(b.legs)) b.legs = [];
+      });
+      await tx.table('days').toCollection().modify((d: Record<string, unknown>) => {
+        if (d.lodgingId === undefined) d.lodgingId = null;
+      });
+      await tx
+        .table('attachments')
+        .filter((a: { kind?: string }) => a.kind === 'code')
+        .delete();
+    },
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = SCHEMA_HISTORY[SCHEMA_HISTORY.length - 1]?.version ?? 1;

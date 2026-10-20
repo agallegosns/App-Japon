@@ -83,7 +83,7 @@ export function BookingsPage() {
               </LinkButton>
             }
           >
-            Guarda vuelos, hoteles, restaurantes y entradas con sus documentos y códigos QR.
+            Guarda vuelos, hoteles, restaurantes y entradas con sus documentos.
           </EmptyState>
         ) : (
           <Groups bookings={filtered} view={view} counts={result.data.counts} />

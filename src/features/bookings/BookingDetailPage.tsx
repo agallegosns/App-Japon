@@ -8,16 +8,16 @@ import {
   Paperclip,
   Pencil,
   Phone,
-  QrCode,
   Trash2,
 } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { formatDateShort, formatLdt } from '../../models/datetime';
+import { formatMinutes, layoverMinutes, legMinutes, routeText } from '../../models/flights';
 import { ATTACHMENT_KIND_LABEL, BOOKING_STATUS_LABEL, CATEGORY_LABEL } from '../../models/labels';
 import type { Attachment, AttachmentKind, Booking } from '../../models/types';
 import { bookingWarnings } from '../../models/warnings';
-import { addAttachment, deleteAttachment, inferKind, listAttachments, setAttachmentKind } from '../../storage/attachments';
+import { addAttachment, deleteAttachment, inferKind, listAttachments } from '../../storage/attachments';
 import { deleteBooking, getBooking } from '../../storage/bookings';
 import { getDb } from '../../storage/db';
 import { formatBytes } from '../../storage/persistence';
@@ -118,11 +118,15 @@ function Detail({ booking: b, attachments, activities }: NonNullable<Awaited<Ret
         </Button>
       )}
 
-      <Card title="Fechas">
-        <dl className="kv">
-          <DateRows booking={b} />
-        </dl>
-      </Card>
+      {b.category === 'vuelo' && b.legs.length > 0 ? (
+        <FlightLegs booking={b} />
+      ) : (
+        <Card title="Fechas">
+          <dl className="kv">
+            <DateRows booking={b} />
+          </dl>
+        </Card>
+      )}
 
       {(b.address || b.addressJa || b.phone || b.contact) && (
         <Card title="Lugar y contacto">
@@ -172,33 +176,9 @@ function Detail({ booking: b, attachments, activities }: NonNullable<Awaited<Ret
         </Card>
       )}
 
-      {(b.confirmationCode || b.price) && (
-        <Card title="Reserva">
-          <div className="stack">
-            {b.confirmationCode && (
-              <div className="spread">
-                <span>
-                  <span className="muted small" style={{ display: 'block' }}>
-                    Localizador
-                  </span>
-                  <span className="mono" style={{ fontSize: 'var(--fs-xl)', fontWeight: 700, letterSpacing: '0.06em' }}>
-                    {b.confirmationCode}
-                  </span>
-                </span>
-                <Button small icon={<Copy size={16} />} onClick={() => copy(b.confirmationCode, 'Localizador')}>
-                  Copiar
-                </Button>
-              </div>
-            )}
-            {b.price && (
-              <div>
-                <span className="muted small" style={{ display: 'block' }}>
-                  Precio
-                </span>
-                {new Intl.NumberFormat('es-ES', { style: 'currency', currency: b.price.currency }).format(b.price.amount)}
-              </div>
-            )}
-          </div>
+      {b.price && (
+        <Card title="Precio">
+          <p>{new Intl.NumberFormat('es-ES', { style: 'currency', currency: b.price.currency }).format(b.price.amount)}</p>
         </Card>
       )}
 
@@ -304,7 +284,7 @@ function DateRows({ booking: b }: { booking: Booking }) {
   );
 }
 
-const KIND_ICON: Record<AttachmentKind, typeof FileText> = { pdf: FileText, image: ImageIcon, code: QrCode };
+const KIND_ICON: Record<AttachmentKind, typeof FileText> = { pdf: FileText, image: ImageIcon };
 
 function Attachments({ booking, attachments }: { booking: Booking; attachments: Attachment[] }) {
   const toast = useToast();
@@ -313,7 +293,6 @@ function Attachments({ booking, attachments }: { booking: Booking; attachments: 
   const [viewing, setViewing] = useState<Attachment | null>(null);
   const [menu, setMenu] = useState<Attachment | null>(null);
   const [toDelete, setToDelete] = useState<Attachment | null>(null);
-  const [pendingKind, setPendingKind] = useState<'image' | 'code'>('image');
 
   const onFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -321,9 +300,7 @@ function Attachments({ booking, attachments }: { booking: Booking; attachments: 
     let ok = 0;
     for (const file of Array.from(files)) {
       try {
-        const inferred = inferKind(file.type);
-        const kind = inferred === 'image' ? pendingKind : (inferred ?? undefined);
-        await addAttachment(getDb(), booking.id, file, file.name, kind);
+        await addAttachment(getDb(), booking.id, file, file.name, inferKind(file.type) ?? undefined);
         ok++;
       } catch (e) {
         toast.error(`${file.name}: ${errorMessage(e)}`);
@@ -334,15 +311,10 @@ function Attachments({ booking, attachments }: { booking: Booking; attachments: 
     if (input.current) input.current.value = '';
   };
 
-  const pick = (kind: 'image' | 'code') => {
-    setPendingKind(kind);
-    input.current?.click();
-  };
-
   return (
     <Card title="Adjuntos" action={<StatusTag icon={<Paperclip size={12} />}>{attachments.length}</StatusTag>}>
       <div className="stack">
-        {attachments.length === 0 && <p className="muted small">Sin adjuntos. Añade el PDF de la reserva, capturas o el código QR.</p>}
+        {attachments.length === 0 && <p className="muted small">Sin adjuntos. Puedes añadir un PDF o una captura. Evita adjuntar documentos con códigos de reserva o QR.</p>}
         {attachments.length > 0 && (
           <ul className="list" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
             {attachments.map((a) => {
@@ -372,14 +344,9 @@ function Attachments({ booking, attachments }: { booking: Booking; attachments: 
           hidden
           onChange={(e) => void onFiles(e.target.files)}
         />
-        <div className="input-row">
-          <Button icon={<Paperclip size={18} />} disabled={busy} onClick={() => pick('image')}>
-            PDF o imagen
-          </Button>
-          <Button icon={<QrCode size={18} />} disabled={busy} onClick={() => pick('code')}>
-            QR / código
-          </Button>
-        </div>
+        <Button icon={<Paperclip size={18} />} disabled={busy} onClick={() => input.current?.click()}>
+          Añadir PDF o imagen
+        </Button>
         {busy && <p className="muted small">Guardando…</p>}
       </div>
 
@@ -388,23 +355,6 @@ function Attachments({ booking, attachments }: { booking: Booking; attachments: 
       <BottomSheet open={!!menu} title={menu?.name ?? ''} onClose={() => setMenu(null)}>
         {menu && (
           <div className="stack">
-            {menu.kind !== 'pdf' && (
-              <Button
-                block
-                icon={menu.kind === 'code' ? <ImageIcon size={18} /> : <QrCode size={18} />}
-                onClick={async () => {
-                  try {
-                    await setAttachmentKind(getDb(), menu.id, menu.kind === 'code' ? 'image' : 'code');
-                    toast.show('Tipo cambiado');
-                  } catch (e) {
-                    toast.error(errorMessage(e));
-                  }
-                  setMenu(null);
-                }}
-              >
-                {menu.kind === 'code' ? 'Tratar como imagen normal' : 'Tratar como QR / código de barras'}
-              </Button>
-            )}
             <Button
               block
               icon={<Trash2 size={18} />}
@@ -442,3 +392,49 @@ function Attachments({ booking, attachments }: { booking: Booking; attachments: 
   );
 }
 
+
+function FlightLegs({ booking: b }: { booking: Booking }) {
+  const route = routeText(b.legs);
+  return (
+    <Card title={b.legs.length > 1 ? `Vuelo con ${b.legs.length - 1} escala${b.legs.length > 2 ? 's' : ''}` : 'Vuelo'}>
+      <div className="stack">
+        {route && <p className="break" style={{ fontWeight: 600 }}>{route}</p>}
+        <ol className="stack" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+          {b.legs.map((leg, i) => {
+            const prev = b.legs[i - 1];
+            const gap = prev ? layoverMinutes(prev, leg) : null;
+            const dur = legMinutes(leg);
+            return (
+              <li key={leg.id} className="stack" style={{ gap: 'var(--sp-1)' }}>
+                {prev && (
+                  <p className="muted small" style={{ borderTop: '1px dashed var(--c-border)', paddingTop: 'var(--sp-2)' }}>
+                    Escala en {prev.to || 'la escala'}
+                    {gap !== null ? `: ${formatMinutes(gap)}` : ''}
+                  </p>
+                )}
+                <p>
+                  <strong>
+                    {leg.from || '¿Origen?'} → {leg.to || '¿Destino?'}
+                  </strong>
+                  {leg.flightNumber ? ` · ${leg.flightNumber}` : ''}
+                </p>
+                <dl className="kv">
+                  <dt>Salida</dt>
+                  <dd>{formatLdt(leg.depart)}</dd>
+                  <dt>Llegada</dt>
+                  <dd>{formatLdt(leg.arrive)}</dd>
+                  {dur !== null && (
+                    <>
+                      <dt>Duración</dt>
+                      <dd>{formatMinutes(dur)}</dd>
+                    </>
+                  )}
+                </dl>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
+    </Card>
+  );
+}

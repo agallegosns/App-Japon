@@ -17,7 +17,7 @@ comprobar en el iPhone, dale los pasos exactos (qué pulsar y qué debería ver)
 - **Repositorio PÚBLICO.** Jamás incluir datos personales, fechas o datos reales del viaje, reservas,
   documentos, capturas ni claves. Los ejemplos y tests usan datos genéricos (años 2030+, "Hotel de prueba").
   `.gitignore` excluye exportaciones y carpetas de datos. Los datos reales solo se introducen dentro de la app.
-- **Offline-first.** Datos en IndexedDB con Dexie; archivos (PDF, imágenes, QR) como `Blob` en IndexedDB;
+- **Offline-first para lo escrito a mano.** Datos en IndexedDB con Dexie; archivos (PDF, imágenes) como `Blob` en IndexedDB;
   se solicita `navigator.storage.persist()`.
 - **Interfaz en español.** Fechas y horas se guardan como fecha + hora local + zona IANA (por defecto
   `Asia/Tokyo`; los vuelos llevan zona de origen en la salida y de destino en la llegada).
@@ -34,6 +34,21 @@ comprobar en el iPhone, dale los pasos exactos (qué pulsar y qué debería ver)
   `ARCHITECTURE.md` (decisiones y limitaciones de cada integración).
 - **CI en verde antes de cada commit a `main`** (`npm run ci` en local: typecheck, lint, tests y build).
   Un commit al cerrar cada fase.
+
+## Decisiones del usuario (v0.4.0, obligatorias)
+
+- **Sin códigos de reserva.** No hay campo de localizador ni adjuntos tipo QR/código de barras, por seguridad.
+  No reintroducirlos. La migración v2 borró los que hubiera y las copias antiguas se sanean al importarlas.
+- **Sin conexión solo funciona lo escrito a mano:** reservas, documentos adjuntos, itinerario y avisos.
+  **Traductor y Mapa necesitan Internet** y, sin conexión, muestran «Sin conexión en este momento»
+  (`src/ui/OnlineGate.tsx`). No se descargan modelos ni mapas para uso sin conexión.
+- **Traductor = solo cámara** (estilo Google Lens): foto → OCR local con Tesseract (`jpn`/`jpn_vert`) →
+  traducción en línea con MyMemory (`src/features/translator/translate.ts`, único archivo a tocar si se cambia
+  de proveedor). La foto no sale del móvil; solo el texto reconocido.
+- **Vuelos con escalas:** `Booking.legs` (tramos con aeropuerto, hora local y zona). El vuelo toma su salida y
+  llegada del primer y último tramo. Aeropuertos: lista local con buscador en `src/models/airports.ts`.
+- **Alojamiento por día:** se deduce de check-in/check-out (`src/models/lodging.ts`) y se puede fijar a mano
+  (`Day.lodgingId`). Varios destinos en una misma ciudad se modelan como ciudades distintas del viaje.
 
 ## Reglas de durabilidad (la app debe funcionar sin fallos 7 meses y todo el viaje)
 
@@ -80,4 +95,5 @@ Base de publicación: `/App-Japon/` (Vite `base`, `scope` y `start_url` del mani
 ## Fases
 
 1. Base y Laboratorio — hecha. 2. Interfaz y navegación — hecha. 3. Reservas, itinerario y almacenamiento —
-hecha. **Siguientes:** mapas y traductor (no empezar sin que el usuario lo pida). Ver `TASKS.md`.
+hecha. v0.4.0: escalas, aeropuertos, alojamiento por día, traductor con cámara, sin códigos. **Siguiente:** mapa
+(con conexión; no empezar sin que el usuario lo pida). Ver `TASKS.md`.

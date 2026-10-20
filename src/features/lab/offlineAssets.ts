@@ -1,8 +1,7 @@
 import { formatBytes } from '../../storage/persistence';
 
-/** Nombres de caché compartidos con el service worker (src/sw.ts). */
+/** Nombre de caché compartido con el service worker (src/sw.ts). */
 export const OCR_CACHE = 'nihon-ocr-v1';
-export const ORT_CACHE = 'nihon-ort-v1';
 
 export function assetUrl(path: string): string {
   return new URL(`${import.meta.env.BASE_URL}${path}`, window.location.origin).href;
@@ -15,8 +14,6 @@ export const OCR_FILES = [
   'tesseract/lang/jpn.traineddata.gz',
   'tesseract/lang/jpn_vert.traineddata.gz',
 ];
-
-export const ORT_FILES = ['ort/ort-wasm-simd-threaded.jsep.mjs', 'ort/ort-wasm-simd-threaded.jsep.wasm'];
 
 export interface CacheReport {
   ok: boolean;

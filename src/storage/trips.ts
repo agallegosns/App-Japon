@@ -62,7 +62,7 @@ async function syncDays(db: NihonDB, trip: Trip): Promise<void> {
   const defaultCity = trip.cities.length === 1 ? (trip.cities[0] ?? '') : '';
   const toAdd: Day[] = dates
     .filter((date) => !byDate.has(date))
-    .map((date) => ({ id: newId(), tripId: trip.id, date, city: defaultCity }));
+    .map((date) => ({ id: newId(), tripId: trip.id, date, city: defaultCity, lodgingId: null }));
   if (toAdd.length) await db.days.bulkAdd(toAdd);
 }
 
@@ -74,6 +74,19 @@ export async function listDays(db: NihonDB, tripId: string): Promise<Day[]> {
 export async function setDayCity(db: NihonDB, dayId: string, city: string): Promise<void> {
   await db.transaction('rw', db.days, db.meta, async () => {
     const updated = await db.days.update(dayId, { city: city.trim() });
+    if (!updated) throw new Error('El día no existe.');
+    await recordChange(db);
+  });
+}
+
+/** Elige a mano el alojamiento de la noche de un día. null = automático (según check-in/check-out). */
+export async function setDayLodging(db: NihonDB, dayId: string, lodgingId: string | null): Promise<void> {
+  await db.transaction('rw', db.days, db.bookings, db.meta, async () => {
+    if (lodgingId !== null) {
+      const b = await db.bookings.get(lodgingId);
+      if (!b || b.category !== 'alojamiento') throw new Error('Ese alojamiento no existe.');
+    }
+    const updated = await db.days.update(dayId, { lodgingId });
     if (!updated) throw new Error('El día no existe.');
     await recordChange(db);
   });

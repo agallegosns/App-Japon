@@ -70,7 +70,7 @@ alternativa accesible cada parada tiene botones Subir/Bajar. El orden se guarda 
 | --- | --- | --- |
 | Almacenamiento | `persist()`, `estimate()`, 10 Blobs de 10 MB en IndexedDB verificados por muestreo; contador de aperturas. | Safari solo concede persistencia a apps instaladas; la cuota real se ve en el dispositivo. |
 | OCR | Tesseract.js 6 en worker propio (`workerBlobURL: false`), núcleo LSTM WASM (con y sin SIMD) y `jpn`/`jpn_vert` 4.0.0_best_int autoalojados en `/tesseract/`. | ≈ 8 MB por dispositivo. Precisión baja con fotos torcidas o poca luz. Verificado en Chromium (97–100 % en las imágenes de prueba, también sin red); pendiente en iPhone. |
-| Traducción | Transformers.js 3.8.1 en worker, ONNX Runtime WASM autoalojado en `/ort/`, 1 hilo (Pages no permite cross-origin isolation), modelos q8. Dos opciones: `opus-mt-ja-es` convertido por el workflow «Recursos offline» y servido desde `/offline/models/`, o `Xenova/opus-mt-ja-en` + `Xenova/opus-mt-en-es` desde Hugging Face. | **Vía directa descartada por ahora:** no existe una conversión pública de `opus-mt-ja-es` para Transformers.js y la generada en Actions (scripts de Transformers.js 3.8.1) no sirve: el decodificador fusionado cuantizado falla al ejecutarse (`Slice: Starts must be a 1-D array`, posiciones de Marian) y pesa 185 MB (encoder 51 MB; total ≈ 236 MB), por encima de los 100 MB por archivo de GitHub Pages. La comprobación de traducción del workflow lo detectó y no se publicó. Calidad de OPUS-MT ja→es además modesta. Riesgo de cierre de Safari por memoria (≈ 100–300 MB): el Laboratorio lo detecta si la prueba no terminó. Alternativas evaluadas: NLLB-200 600M y M2M100 418M son demasiado grandes (> 500 MB) para Safari en iPhone. No verificable en este entorno (huggingface.co bloqueado). |
+| Traducción (histórico, retirada en v0.4.0) | Transformers.js 3.8.1 en worker, ONNX Runtime WASM autoalojado en `/ort/`, 1 hilo (Pages no permite cross-origin isolation), modelos q8. Dos opciones: `opus-mt-ja-es` convertido por el workflow «Recursos offline» y servido desde `/offline/models/`, o `Xenova/opus-mt-ja-en` + `Xenova/opus-mt-en-es` desde Hugging Face. | **Vía directa descartada por ahora:** no existe una conversión pública de `opus-mt-ja-es` para Transformers.js y la generada en Actions (scripts de Transformers.js 3.8.1) no sirve: el decodificador fusionado cuantizado falla al ejecutarse (`Slice: Starts must be a 1-D array`, posiciones de Marian) y pesa 185 MB (encoder 51 MB; total ≈ 236 MB), por encima de los 100 MB por archivo de GitHub Pages. La comprobación de traducción del workflow lo detectó y no se publicó. Calidad de OPUS-MT ja→es además modesta. Riesgo de cierre de Safari por memoria (≈ 100–300 MB): el Laboratorio lo detecta si la prueba no terminó. Alternativas evaluadas: NLLB-200 600M y M2M100 418M son demasiado grandes (> 500 MB) para Safari en iPhone. No verificable en este entorno (huggingface.co bloqueado). |
 | Mapas | MapLibre GL 6 + PMTiles 4. El extracto se descarga entero a IndexedDB y una fuente PMTiles propia lee rangos del Blob (`blob.slice`), así que no se usa la red. Estilo sin etiquetas (no requiere glifos remotos). | El extracto de prueba (centro de Kioto, z ≤ 15, 6,2 MB) lo genera el workflow «Recursos offline» con `pmtiles extract` desde el build diario de Protomaps. Verificado en Chromium sin red. Etiquetas, búsqueda y extractos completos: siguiente fase. |
 | GPS | `getCurrentPosition` solo al pulsar. | En modo avión puede tardar más. |
 | Cámara | Compara `<input capture>` con `getUserMedia` en modo instalado. | iOS ha tenido fallos de `getUserMedia` en apps de pantalla de inicio: por eso se prueban ambos. |
@@ -103,3 +103,27 @@ Tesseract: Apache 2.0. Noto Sans JP: OFL 1.1.
 Versiones exactas. `maplibre-gl` 6.15, `pdfjs-dist` 6.4 y `react-router-dom` 7.18 se eligieron por avisos de
 seguridad en versiones anteriores. `npm audit` informa de `sharp`/`onnxruntime-node` dentro de
 `@huggingface/transformers`: son dependencias solo de Node, que el navegador nunca carga.
+
+
+## Decisiones de la v0.4.0
+
+- **Traducción en línea (MyMemory) en vez de local.** El usuario decidió que traductor y mapa se usan con
+  conexión. Se retiraron Transformers.js, los modelos ONNX y su Laboratorio (la vía local no era viable: ver la fila
+  histórica de arriba). El traductor hace OCR local con Tesseract (`jpn`/`jpn_vert`, se descarga ≈ 8 MB la primera
+  vez) y envía solo el texto a `https://api.mymemory.translated.net/get` (`langpair=ja|es`).
+  Límites: 500 bytes por petición (se trocea), 5 000 caracteres/día anónimos por IP, 50 000 con un email en el
+  parámetro `de` (campo opcional en la pantalla, guardado en localStorage). Una IP compartida (datos móviles con
+  CGNAT) puede agotar antes el límite; el email lo evita porque cuenta por email. Calidad de MyMemory ja→es:
+  correcta para frases cortas y carteles, peor con texto largo o jerga. El proveedor está aislado en
+  `translate.ts` por si hay que cambiarlo. **No se ha podido probar contra el servicio real desde el entorno de
+  desarrollo** (red restringida): los tests usan respuestas simuladas.
+- **Traducción sobre la foto:** una captura fija (no vídeo en directo). Tesseract tarda varios segundos por
+  imagen en un móvil; un overlay en directo no es viable con este motor. La foto se reduce a 1 600 px.
+- **Sin conexión:** `OnlineGate` (usa `navigator.onLine`) cubre Traductor y Mapa. `onLine` puede decir «en línea» con
+  una wifi sin salida; en ese caso el traductor mostrará el error de red real al traducir.
+- **Datos (esquema v2):** `Booking.legs` (tramos de vuelo), `Day.lodgingId`; se eliminan `Booking.confirmationCode`
+  y los adjuntos `kind: 'code'`. La migración v2 borra esos datos (decisión de seguridad del usuario). El formato de
+  copia sigue en la versión 1: las copias antiguas se sanean al importarlas (`parseBackup`).
+- **Aeropuertos:** lista local de ≈ 110 aeropuertos (España, Europa, Oriente Medio, Asia, Japón, América,
+  Oceanía) con código IATA, nombres en español y zona horaria; escrita a mano, no exhaustiva. Si falta uno, se
+  escribe a mano. Al elegir aeropuerto se propone su zona horaria para la hora de salida/llegada.

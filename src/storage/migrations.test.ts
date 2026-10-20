@@ -35,6 +35,25 @@ const FIXTURES: Record<number, Record<string, Record<string, unknown>[]>> = {
   },
 };
 
+// La versión 2 guarda los mismos datos sin localizador y con tramos de vuelo y alojamiento por día.
+FIXTURES[2] = {
+  trips: FIXTURES[1]!.trips!,
+  days: [
+    { id: 'd1', tripId: 't1', date: '2030-04-01', city: 'A', lodgingId: null },
+    { id: 'd2', tripId: 't1', date: '2030-04-02', city: '', lodgingId: 'b1' },
+  ],
+  bookings: [
+    {
+      id: 'b1', name: 'Hotel', category: 'alojamiento', status: 'confirmada', start: null, arrival: null,
+      checkIn: { date: '2030-04-01', time: '15:00', tz: 'Asia/Tokyo' }, checkOut: null, address: '', addressJa: '',
+      legs: [], price: null, phone: '', contact: '', notes: '', links: [], sortAt: 1, createdAt: 1, updatedAt: 1,
+    },
+  ],
+  attachments: FIXTURES[1]!.attachments!,
+  activities: FIXTURES[1]!.activities!,
+  meta: FIXTURES[1]!.meta!,
+};
+
 describe('migraciones de IndexedDB', () => {
   it('cada versión publicada tiene fixture y las versiones son crecientes', () => {
     const versions = SCHEMA_HISTORY.map((v) => v.version);
@@ -58,7 +77,10 @@ describe('migraciones de IndexedDB', () => {
       await db.open();
       expect(db.verno).toBe(CURRENT_SCHEMA_VERSION);
       expect(await db.trips.count()).toBe(1);
-      expect(await db.bookings.get('b1')).toMatchObject({ name: 'Hotel', confirmationCode: 'X' });
+      const hotel = await db.bookings.get('b1');
+      expect(hotel).toMatchObject({ name: 'Hotel', legs: [] });
+      expect(hotel).not.toHaveProperty('confirmationCode');
+      expect((await db.days.get('d1'))?.lodgingId).toBeNull();
       expect((await db.activities.where('[date+order]').equals(['2030-04-01', 0]).first())?.title).toBe('Paseo');
       const att = await db.attachments.get('a1');
       expect(Array.from(new Uint8Array(await att!.blob.arrayBuffer()))).toEqual([1, 2, 3]);
@@ -66,4 +88,29 @@ describe('migraciones de IndexedDB', () => {
       await db.delete();
     });
   }
+
+  it('v1 → v2: elimina localizadores y adjuntos QR/código, conserva el resto y rellena los campos nuevos', async () => {
+    const name = `mig-v2-${Math.random()}`;
+    const old = new Dexie(name);
+    old.version(1).stores(SCHEMA_HISTORY[0]!.stores as Record<string, string>);
+    await old.open();
+    await old.table('trips').bulkAdd(FIXTURES[1]!.trips!);
+    await old.table('days').bulkAdd(FIXTURES[1]!.days!);
+    await old.table('bookings').bulkAdd(FIXTURES[1]!.bookings!);
+    await old.table('attachments').bulkAdd([
+      ...FIXTURES[1]!.attachments!,
+      { id: 'a2', bookingId: 'b1', kind: 'code', name: 'qr.png', mime: 'image/png', size: 1, blob: new Blob([new Uint8Array([1])], { type: 'image/png' }), createdAt: 2 },
+      { id: 'a3', bookingId: 'b1', kind: 'image', name: 'foto.png', mime: 'image/png', size: 1, blob: new Blob([new Uint8Array([2])], { type: 'image/png' }), createdAt: 3 },
+    ]);
+    old.close();
+
+    const db = new NihonDB(name);
+    await db.open();
+    const hotel = await db.bookings.get('b1');
+    expect(hotel).not.toHaveProperty('confirmationCode');
+    expect(hotel?.legs).toEqual([]);
+    expect((await db.attachments.toArray()).map((a) => a.id).sort()).toEqual(['a1', 'a3']);
+    expect((await db.days.toArray()).every((d) => d.lodgingId === null)).toBe(true);
+    await db.delete();
+  });
 });

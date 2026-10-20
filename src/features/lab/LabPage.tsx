@@ -15,7 +15,6 @@ import { OcrLab } from './OcrLab';
 import { OnlineLab } from './OnlineLab';
 import { LabReportProvider, STATUS_TEXT, useLabReport } from './report';
 import { StorageLab } from './StorageLab';
-import { TranslationLab } from './TranslationLab';
 
 export default function LabPage() {
   return (
@@ -41,7 +40,6 @@ function Lab() {
       <ReportButton />
       <StorageLab />
       <OcrLab />
-      <TranslationLab />
       <MapLab />
       <GpsLab />
       <CameraLab />

@@ -71,7 +71,7 @@ export function TripFormPage() {
               </div>
               <TextField
                 label="Ciudades"
-                hint="Separadas por comas. Luego asignas una ciudad a cada día en el Itinerario."
+                hint="Separadas por comas, p. ej. Tokio, Tokyo Disney Resort, Kioto. Luego asignas una a cada día en el Itinerario."
                 value={citiesText}
                 onChange={setCitiesText}
                 autoComplete="off"

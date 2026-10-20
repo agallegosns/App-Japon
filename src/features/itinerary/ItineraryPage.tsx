@@ -3,6 +3,7 @@ import {
   ArrowDown,
   ArrowUp,
   CalendarDays,
+  BedDouble,
   Check,
   Copy,
   ExternalLink,
@@ -21,12 +22,13 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { capitalize, formatDateLong, formatDateShort, formatDayMonth, nowInZone } from '../../models/datetime';
 import { ACTIVITY_STATUS_LABEL } from '../../models/labels';
+import { dayLodging, lodgingChangesOn } from '../../models/lodging';
 import type { Activity, Booking, Day } from '../../models/types';
 import { activityWarnings, detectOverlaps } from '../../models/warnings';
 import { deleteActivity, moveActivity, setActivityStatus } from '../../storage/activities';
 import { useAppData, type AppData } from '../../storage/appData';
 import { getDb } from '../../storage/db';
-import { setDayCity } from '../../storage/trips';
+import { setDayCity, setDayLodging } from '../../storage/trips';
 import { BottomSheet } from '../../ui/BottomSheet';
 import { Button, LinkButton } from '../../ui/Button';
 import { ConfirmDialog } from '../../ui/ConfirmDialog';
@@ -119,6 +121,7 @@ function Itinerary({ data }: { data: AppData }) {
               activities={data.activities.filter((a) => a.date === selected)}
               overlaps={overlaps}
               bookings={bookings}
+              allBookings={data.bookings}
             />
           )}
         </>
@@ -166,7 +169,7 @@ interface ListProps {
   bookings: Map<string, Booking>;
 }
 
-function DayView({ date, day, cities, activities, overlaps, bookings }: ListProps & { date: string; day: Day | null; cities: string[]; activities: Activity[] }) {
+function DayView({ date, day, cities, activities, overlaps, bookings, allBookings }: ListProps & { date: string; day: Day | null; cities: string[]; activities: Activity[]; allBookings: Booking[] }) {
   const toast = useToast();
   const sorted = [...activities].sort((a, b) => a.order - b.order);
 
@@ -208,6 +211,8 @@ function DayView({ date, day, cities, activities, overlaps, bookings }: ListProp
         <Notice tone="warning">Este día queda fuera de las fechas del viaje.</Notice>
       )}
 
+      <LodgingBlock date={date} day={day} bookings={allBookings} />
+
       {sorted.length === 0 ? (
         <EmptyState icon={<MapPin size={26} />} title="Sin paradas este día">
           Añade visitas, comidas o traslados.
@@ -233,6 +238,76 @@ function DayView({ date, day, cities, activities, overlaps, bookings }: ListProp
       <LinkButton to={`/itinerario/nueva?fecha=${date}`} variant="primary" block icon={<Plus size={20} />}>
         Añadir parada
       </LinkButton>
+    </section>
+  );
+}
+
+function LodgingBlock({ date, day, bookings }: { date: string; day: Day | null; bookings: Booking[] }) {
+  const toast = useToast();
+  const lodging = dayLodging(date, day, bookings);
+  const changes = lodgingChangesOn(date, bookings);
+  const hotels = bookings.filter((b) => b.category === 'alojamiento' && b.status !== 'cancelada');
+  const names =
+    lodging.source === 'manual' ? [lodging.booking] : lodging.source === 'auto' ? lodging.bookings : [];
+
+  return (
+    <section className="card stack" aria-label="Alojamiento de la noche">
+      <div className="row" style={{ gap: 'var(--sp-2)' }}>
+        <BedDouble size={20} aria-hidden="true" />
+        <h3 style={{ margin: 0 }}>Alojamiento de esta noche</h3>
+      </div>
+      {names.length > 0 ? (
+        <ul className="list" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+          {names.map((b) => (
+            <li key={b.id}>
+              <Link className="list-item" to={`/reservas/${b.id}`}>
+                <span className="grow break">
+                  {b.name}
+                  {b.address && <span className="muted small" style={{ display: 'block' }}>{b.address}</span>}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="muted small">
+          {hotels.length === 0
+            ? 'Aún no hay ningún alojamiento. Añádelo en Reservas con sus fechas de check-in y check-out y aparecerá aquí.'
+            : 'Ningún alojamiento cubre esta noche. Elige uno abajo o revisa sus fechas.'}
+        </p>
+      )}
+      {(changes.checkOut.length > 0 || changes.checkIn.length > 0) && (
+        <div className="row-wrap">
+          {changes.checkOut.map((b) => (
+            <StatusTag key={`o-${b.id}`} tone="warning">Check-out hoy: {b.name}</StatusTag>
+          ))}
+          {changes.checkIn.map((b) => (
+            <StatusTag key={`i-${b.id}`} tone="info">Check-in hoy: {b.name}</StatusTag>
+          ))}
+        </div>
+      )}
+      {day && hotels.length > 0 && (
+        <div className="field">
+          <label className="field-label" htmlFor="day-lodging">
+            Elegir alojamiento a mano
+          </label>
+          <select
+            id="day-lodging"
+            className="input"
+            value={day.lodgingId ?? ''}
+            onChange={(e) =>
+              setDayLodging(getDb(), day.id, e.target.value || null).catch((err: unknown) => toast.error(errorMessage(err)))
+            }
+          >
+            <option value="">Automático (según check-in y check-out)</option>
+            {hotels.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
     </section>
   );
 }

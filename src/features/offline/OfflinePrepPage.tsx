@@ -1,6 +1,5 @@
 import { CheckCircle2, CircleDashed, Clock, RefreshCw, XCircle, AlertTriangle } from 'lucide-react';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
 import { usePwaState } from '../../app/pwaState';
 import { useOnline } from '../../app/useConnectivity';
 import { Button } from '../../ui/Button';
@@ -44,11 +43,15 @@ export function OfflinePrepPage() {
     { id: 'installed', title: 'App instalada en la pantalla de inicio', run: checkInstalled },
     { id: 'cache', title: 'App guardada para funcionar sin conexión', run: () => checkAppCache(pwa.registration) },
     { id: 'data', title: 'Datos del viaje legibles', run: checkData },
-    { id: 'attachments', title: 'Adjuntos (PDF, imágenes, QR) legibles', run: checkAttachments },
+    { id: 'attachments', title: 'Adjuntos (PDF e imágenes) legibles', run: checkAttachments },
     { id: 'persist', title: 'Almacenamiento persistente', run: checkPersistence },
     { id: 'backup', title: 'Copia de seguridad reciente', run: checkBackup },
-    { id: 'maps', title: 'Mapas sin conexión', run: null, pendingNote: <>Pendiente de fase. <Link to="/lab#mapas">Ver prueba</Link></> },
-    { id: 'translation', title: 'Traducción sin conexión', run: null, pendingNote: <>Pendiente de fase. <Link to="/lab#traduccion">Ver prueba</Link></> },
+    {
+      id: 'online-only',
+      title: 'Traductor y mapa',
+      run: null,
+      pendingNote: 'Necesitan conexión a Internet: sin conexión solo se muestra un aviso. Reservas, documentos e itinerario funcionan siempre.',
+    },
   ];
 
   const runAll = useCallback(async () => {
@@ -100,7 +103,7 @@ export function OfflinePrepPage() {
           })}
         </ul>
       </Card>
-      {allOk && <Notice tone="success">Todo lo disponible en esta versión está listo para usarse sin conexión.</Notice>}
+      {allOk && <Notice tone="success">Reservas, documentos e itinerario están listos para usarse sin conexión.</Notice>}
       <Button block icon={<RefreshCw size={18} />} onClick={() => void runAll()}>
         Comprobar de nuevo
       </Button>

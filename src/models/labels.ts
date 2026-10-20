@@ -24,5 +24,4 @@ export const ACTIVITY_STATUS_LABEL: Record<ActivityStatus, string> = {
 export const ATTACHMENT_KIND_LABEL: Record<AttachmentKind, string> = {
   pdf: 'PDF',
   image: 'Imagen',
-  code: 'QR / código de barras',
 };

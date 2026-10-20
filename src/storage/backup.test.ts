@@ -31,7 +31,7 @@ async function seed(d: NihonDB) {
   });
   const pdf = Array.from({ length: 5000 }, (_, i) => i % 251);
   await addAttachment(d, b.id, bytesBlob(pdf, 'application/pdf'), 'reserva.pdf');
-  await addAttachment(d, b.id, bytesBlob([9, 8, 7], 'image/png'), 'qr.png', 'code');
+  await addAttachment(d, b.id, bytesBlob([9, 8, 7], 'image/png'), 'captura.png');
   await createActivity(d, { ...emptyActivity('2030-04-01'), title: 'Paseo', bookingId: b.id, mapRef: { type: 'coords', lat: 35, lng: 135.7 } });
   return { pdf };
 }

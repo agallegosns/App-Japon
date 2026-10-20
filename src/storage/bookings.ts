@@ -1,4 +1,5 @@
 import { isValidTimeZone, ldtToEpoch } from '../models/datetime';
+import { isLegBlank, layoverMinutes } from '../models/flights';
 import { newId } from '../models/id';
 import {
   BOOKING_CATEGORIES,
@@ -23,7 +24,7 @@ export function emptyBooking(category: BookingCategory = 'otro'): BookingInput {
     checkOut: null,
     address: '',
     addressJa: '',
-    confirmationCode: '',
+    legs: [],
     price: null,
     phone: '',
     contact: '',
@@ -53,6 +54,7 @@ export function validateBooking(input: BookingInput): FieldErrors {
       errors.price = 'El precio debe ser un número positivo.';
     else if (!/^[A-Z]{3}$/.test(input.price.currency)) errors.price = 'Moneda no válida (p. ej. EUR, JPY).';
   }
+  validateLegs(errors, input);
   input.links.forEach((l, i) => {
     if (!isHttpUrl(l.url)) errors[`links.${i}`] = 'El enlace debe empezar por https://';
   });
@@ -62,24 +64,52 @@ export function validateBooking(input: BookingInput): FieldErrors {
   return errors;
 }
 
+function validateLegs(errors: FieldErrors, input: BookingInput): void {
+  if (input.category !== 'vuelo') return;
+  input.legs.forEach((l, i) => {
+    validateLdt(errors, `legs.${i}.depart`, l.depart);
+    validateLdt(errors, `legs.${i}.arrive`, l.arrive);
+    const d = ldtToEpoch(l.depart);
+    const a = ldtToEpoch(l.arrive);
+    if (d !== null && a !== null && l.depart?.time && l.arrive?.time && a < d)
+      errors[`legs.${i}.arrive`] = 'La llegada es anterior a la salida (revisa las zonas horarias).';
+    const prev = input.legs[i - 1];
+    if (prev) {
+      const gap = layoverMinutes(prev, l);
+      if (gap !== null && gap < 0) errors[`legs.${i}.depart`] = 'Sale antes de que llegue el vuelo anterior.';
+    }
+  });
+}
+
+/** En vuelos con tramos, la salida y la llegada del vuelo son las del primer y último tramo. */
+export function applyLegs(input: BookingInput): BookingInput {
+  if (input.category !== 'vuelo') return { ...input, legs: [] };
+  const legs = input.legs
+    .filter((l) => !isLegBlank(l))
+    .map((l) => ({ ...l, from: l.from.trim(), to: l.to.trim(), flightNumber: l.flightNumber.trim().toUpperCase() }));
+  if (legs.length === 0) return { ...input, legs: [] };
+  const first = legs[0];
+  const last = legs[legs.length - 1];
+  return { ...input, legs, start: first?.depart ?? null, arrival: last?.arrive ?? null };
+}
+
 /** Instante usado para ordenar y para calcular la "próxima reserva". */
 export function bookingSortAt(b: Pick<Booking, 'start' | 'checkIn' | 'arrival'>): number | null {
   return ldtToEpoch(b.start) ?? ldtToEpoch(b.checkIn) ?? ldtToEpoch(b.arrival);
 }
 
 function normalize(input: BookingInput): BookingInput {
-  return {
+  return applyLegs({
     ...input,
     name: input.name.trim(),
     address: input.address.trim(),
     addressJa: input.addressJa.trim(),
-    confirmationCode: input.confirmationCode.trim(),
     phone: input.phone.trim(),
     contact: input.contact.trim(),
     links: input.links
       .map((l) => ({ label: l.label.trim(), url: l.url.trim() }))
       .filter((l) => l.url.length > 0),
-  };
+  });
 }
 
 export async function createBooking(db: NihonDB, input: BookingInput): Promise<Booking> {
@@ -111,8 +141,9 @@ export async function updateBooking(db: NihonDB, id: string, input: BookingInput
 
 /** Elimina la reserva, sus adjuntos y desvincula las actividades asociadas. */
 export async function deleteBooking(db: NihonDB, id: string): Promise<void> {
-  await db.transaction('rw', db.bookings, db.attachments, db.activities, db.meta, async () => {
+  await db.transaction('rw', [db.bookings, db.attachments, db.activities, db.days, db.meta], async () => {
     await db.attachments.where('bookingId').equals(id).delete();
+    await db.days.filter((d) => d.lodgingId === id).modify({ lodgingId: null });
     const linked = await db.activities.where('bookingId').equals(id).toArray();
     for (const a of linked) await db.activities.update(a.id, { bookingId: null, updatedAt: Date.now() });
     await db.bookings.delete(id);

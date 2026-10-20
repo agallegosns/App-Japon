@@ -18,16 +18,12 @@ cleanupOutdatedCaches();
 // HashRouter: cualquier navegación dentro del scope sirve index.html desde caché.
 registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html')));
 
-// Recursos grandes descargados bajo demanda desde el Laboratorio (OCR y motor de traducción).
-const RUNTIME_CACHES = { ocr: 'nihon-ocr-v1', ort: 'nihon-ort-v1' } as const;
+// Lector de japonés (OCR) descargado bajo demanda al usar el traductor o el Laboratorio.
+const RUNTIME_CACHES = { ocr: 'nihon-ocr-v1' } as const;
 
 registerRoute(
   ({ url, sameOrigin }) => sameOrigin && url.pathname.startsWith(`${BASE}tesseract/`),
   new CacheFirst({ cacheName: RUNTIME_CACHES.ocr }),
-);
-registerRoute(
-  ({ url, sameOrigin }) => sameOrigin && url.pathname.startsWith(`${BASE}ort/`),
-  new CacheFirst({ cacheName: RUNTIME_CACHES.ort }),
 );
 
 // La versión nueva se instala en segundo plano y espera: solo se activa cuando

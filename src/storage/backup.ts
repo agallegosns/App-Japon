@@ -141,7 +141,10 @@ export function parseBackup(bytes: Uint8Array): ParsedBackup {
     throw new Error('La copia usa un formato de datos más nuevo. Actualiza la app antes de importarla.');
   if (!isObj(data)) throw new Error('La copia está dañada.');
 
-  const attachmentMetas = arr(data, 'attachments') as unknown as AttachmentMeta[];
+  // Copias antiguas: se descartan los adjuntos tipo QR/código (ya no se guardan) y se rellenan los campos nuevos.
+  const attachmentMetas = (arr(data, 'attachments') as unknown as AttachmentMeta[]).filter(
+    (m) => (m.kind as string) !== 'code',
+  );
   const attachments: Attachment[] = attachmentMetas.map((m) => {
     const file = entries[m.path];
     if (!file) throw new Error(`Falta el archivo del adjunto "${m.name}" en la copia.`);
@@ -153,8 +156,12 @@ export function parseBackup(bytes: Uint8Array): ParsedBackup {
   return {
     manifest: manifest as unknown as BackupManifest,
     trips: arr(data, 'trips') as unknown as Trip[],
-    days: arr(data, 'days') as unknown as Day[],
-    bookings: arr(data, 'bookings') as unknown as Booking[],
+    days: (arr(data, 'days') as unknown as Day[]).map((d) => ({ ...d, lodgingId: d.lodgingId ?? null })),
+    bookings: (arr(data, 'bookings') as unknown as (Booking & { confirmationCode?: string })[]).map((b) => {
+      const { confirmationCode: _removed, ...rest } = b;
+      void _removed;
+      return { ...rest, legs: Array.isArray(rest.legs) ? rest.legs : [] };
+    }),
     activities: arr(data, 'activities') as unknown as Activity[],
     attachments,
   };

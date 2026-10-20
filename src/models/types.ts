@@ -29,6 +29,11 @@ export interface Day {
   /** AAAA-MM-DD */
   date: string;
   city: string;
+  /**
+   * Alojamiento elegido a mano para la noche de este día. null = automático
+   * (según check-in y check-out de las reservas de alojamiento).
+   */
+  lodgingId: string | null;
 }
 
 export const BOOKING_CATEGORIES = [
@@ -54,6 +59,19 @@ export interface Money {
   currency: string;
 }
 
+/** Un tramo de un vuelo (un vuelo con escalas tiene varios). */
+export interface FlightLeg {
+  id: string;
+  /** Aeropuerto o ciudad de salida, p. ej. «Madrid (MAD)». */
+  from: string;
+  /** Aeropuerto o ciudad de llegada. */
+  to: string;
+  /** Número de vuelo (opcional). */
+  flightNumber: string;
+  depart: LocalDateTime | null;
+  arrive: LocalDateTime | null;
+}
+
 export interface Booking {
   id: string;
   name: string;
@@ -67,7 +85,8 @@ export interface Booking {
   checkOut: LocalDateTime | null;
   address: string;
   addressJa: string;
-  confirmationCode: string;
+  /** Tramos de un vuelo con escalas. Vacío en el resto de categorías. */
+  legs: FlightLeg[];
   price: Money | null;
   phone: string;
   contact: string;
@@ -79,7 +98,7 @@ export interface Booking {
   updatedAt: number;
 }
 
-export const ATTACHMENT_KINDS = ['pdf', 'image', 'code'] as const;
+export const ATTACHMENT_KINDS = ['pdf', 'image'] as const;
 export type AttachmentKind = (typeof ATTACHMENT_KINDS)[number];
 
 export interface Attachment {

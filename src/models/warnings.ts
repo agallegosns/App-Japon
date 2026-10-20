@@ -1,4 +1,5 @@
 import { timeToMinutes } from './datetime';
+import { formatMinutes, layoverMinutes, SHORT_LAYOVER_MIN } from './flights';
 import type { Activity, Booking, Day } from './types';
 
 export interface Interval {
@@ -68,6 +69,13 @@ export function bookingWarnings(b: Booking): string[] {
       if (!b.start) out.push('Falta la fecha de salida');
       else if (!b.start.time) out.push('Falta la hora de salida');
       if (!b.arrival?.time) out.push('Falta la hora de llegada');
+      b.legs.forEach((leg, i) => {
+        const prev = b.legs[i - 1];
+        if (!prev) return;
+        const gap = layoverMinutes(prev, leg);
+        if (gap !== null && gap >= 0 && gap < SHORT_LAYOVER_MIN)
+          out.push(`Escala muy corta en ${prev.to || 'la escala'} (${formatMinutes(gap)})`);
+      });
       break;
     case 'alojamiento':
       if (!b.checkIn) out.push('Falta el check-in');
@@ -84,7 +92,6 @@ export function bookingWarnings(b: Booking): string[] {
     case 'otro':
       break;
   }
-  if (b.status === 'confirmada' && !b.confirmationCode && b.category !== 'otro') out.push('Falta el localizador');
   return out;
 }
 

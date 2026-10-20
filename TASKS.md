@@ -66,7 +66,21 @@ iPhone · **[pendiente]** sin hacer · **[bloqueado]** depende de algo externo.
   fusionado cuantizado no se puede ejecutar (error real de ONNX Runtime en la comprobación de traducción) y su
   tamaño (185 MB) supera el límite de Pages. El workflow no publica nada que no traduzca o no quepa.
 
+## v0.4.0 — Cambios pedidos por el usuario
+
+- [hecho] Vuelos con escalas: tramos con aeropuerto, hora local y zona; duración de cada escala; aviso de escala corta.
+- [hecho] Buscador de aeropuertos/ciudades sin conexión (p. ej. Hong Kong).
+- [hecho] Alojamiento de cada noche en el Itinerario (automático por fechas o elegido a mano) y avisos de check-in/out.
+- [hecho] Traductor solo con cámara (foto → OCR → traducción sobre la foto); aviso «Sin conexión en este momento».
+- [hecho] Traductor y Mapa con conexión; «Preparar Japón sin conexión» limitado a reservas, documentos e itinerario.
+- [hecho] Sin localizadores ni QR/códigos de barras; migración v2 y saneado de copias antiguas.
+- [hecho] Retirada de la traducción local (Transformers.js) y de su Laboratorio.
+- [dispositivo] Cámara en vivo en la app instalada (si falla: botón «Hacer una foto»).
+- [dispositivo] Calidad del OCR con fotos reales (carteles, menús, máquinas) y tiempo de la primera carga.
+- [dispositivo] Traducción real con MyMemory desde datos móviles y desde wifi; comprobar el aviso de límite diario.
+- [dispositivo] Revisar el formulario de vuelo con teclado en el iPhone (buscador de aeropuertos).
+- [pendiente] Borrar a mano `src/features/lab/TranslationLab.tsx` y `translation.worker.ts` (están vacíos a propósito).
+
 ## Siguientes fases (no empezar sin petición)
 
-- [pendiente] Mapas sin conexión completos (extractos por ciudad, etiquetas, marcadores de actividades).
-- [pendiente] Traductor (cámara → OCR → traducción) según los resultados del Laboratorio.
+- [pendiente] Mapa con conexión (marcadores de actividades y alojamientos, ubicación GPS).

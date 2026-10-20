@@ -1,0 +1,144 @@
+// @vitest-environment node
+import { strToU8, zipSync } from 'fflate';
+import { afterEach, describe, expect, it } from 'vitest';
+import { emptyLeg } from '../models/flights';
+import { bookingWarnings } from '../models/warnings';
+import { BACKUP_FORMAT, BACKUP_FORMAT_VERSION, parseBackup } from './backup';
+import { createBooking, deleteBooking, emptyBooking, getBooking, updateBooking } from './bookings';
+import type { NihonDB } from './db';
+import { CURRENT_SCHEMA_VERSION } from './schema';
+import { listDays, saveTrip, setDayLodging } from './trips';
+import { ValidationError } from './validation';
+import { freshDb } from '../test/helpers';
+import type { FlightLeg } from '../models/types';
+
+let db: NihonDB;
+afterEach(async () => {
+  await db.delete();
+});
+
+const madDoh: FlightLeg = {
+  ...emptyLeg(),
+  from: 'Madrid (MAD)',
+  to: 'Doha (DOH)',
+  flightNumber: 'qr150',
+  depart: { date: '2030-05-01', time: '14:00', tz: 'Europe/Madrid' },
+  arrive: { date: '2030-05-01', time: '22:30', tz: 'Asia/Qatar' },
+};
+const dohHnd: FlightLeg = {
+  ...emptyLeg(),
+  from: 'Doha (DOH)',
+  to: 'Tokio (HND)',
+  depart: { date: '2030-05-02', time: '01:15', tz: 'Asia/Qatar' },
+  arrive: { date: '2030-05-02', time: '18:00', tz: 'Asia/Tokyo' },
+};
+
+describe('vuelos con escalas', () => {
+  it('la salida y la llegada del vuelo son las del primer y último tramo, y se conservan los tramos', async () => {
+    db = freshDb();
+    const b = await createBooking(db, { ...emptyBooking('vuelo'), name: 'MAD → HND', legs: [madDoh, dohHnd] });
+    expect(b.start).toEqual(madDoh.depart);
+    expect(b.arrival).toEqual(dohHnd.arrive);
+    expect(b.sortAt).not.toBeNull();
+    const read = await getBooking(db, b.id);
+    expect(read?.legs).toHaveLength(2);
+    expect(read?.legs[0]?.flightNumber).toBe('QR150');
+  });
+
+  it('descarta los tramos vacíos y deja un vuelo sin tramos como vuelo simple', async () => {
+    db = freshDb();
+    const b = await createBooking(db, {
+      ...emptyBooking('vuelo'),
+      name: 'Vuelo simple',
+      legs: [emptyLeg()],
+      start: { date: '2030-05-01', time: '10:00', tz: 'Europe/Madrid' },
+    });
+    expect(b.legs).toEqual([]);
+    expect(b.start?.time).toBe('10:00');
+  });
+
+  it('solo los vuelos tienen tramos', async () => {
+    db = freshDb();
+    const b = await createBooking(db, { ...emptyBooking('restaurante'), name: 'Cena', legs: [madDoh] });
+    expect(b.legs).toEqual([]);
+  });
+
+  it('rechaza una llegada anterior a la salida y un enlace imposible entre tramos', async () => {
+    db = freshDb();
+    const backwards = { ...madDoh, arrive: { date: '2030-05-01', time: '10:00', tz: 'Asia/Qatar' } };
+    await expect(createBooking(db, { ...emptyBooking('vuelo'), name: 'x', legs: [backwards] })).rejects.toBeInstanceOf(ValidationError);
+    const early = { ...dohHnd, depart: { date: '2030-05-01', time: '20:00', tz: 'Asia/Qatar' } };
+    await expect(createBooking(db, { ...emptyBooking('vuelo'), name: 'x', legs: [madDoh, early] })).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it('se puede editar y quitar una escala', async () => {
+    db = freshDb();
+    const b = await createBooking(db, { ...emptyBooking('vuelo'), name: 'v', legs: [madDoh, dohHnd] });
+    const edited = await updateBooking(db, b.id, { ...emptyBooking('vuelo'), name: 'v', legs: [madDoh] });
+    expect(edited.legs).toHaveLength(1);
+    expect(edited.arrival).toEqual(madDoh.arrive);
+  });
+
+  it('avisa de las escalas muy cortas', async () => {
+    db = freshDb();
+    const tight = { ...dohHnd, depart: { date: '2030-05-01', time: '23:10', tz: 'Asia/Qatar' } };
+    const b = await createBooking(db, { ...emptyBooking('vuelo'), name: 'v', status: 'confirmada', legs: [madDoh, tight] });
+    expect(bookingWarnings(b).some((w) => w.startsWith('Escala muy corta en Doha (DOH)'))).toBe(true);
+    const ok = await createBooking(db, { ...emptyBooking('vuelo'), name: 'v', status: 'confirmada', legs: [madDoh, dohHnd] });
+    expect(bookingWarnings(ok).some((w) => w.startsWith('Escala'))).toBe(false);
+  });
+});
+
+describe('alojamiento por día', () => {
+  it('se elige y se quita a mano; al borrar el alojamiento el día vuelve a automático', async () => {
+    db = freshDb();
+    const trip = await saveTrip(db, { name: 'Viaje', startDate: '2030-04-01', endDate: '2030-04-02', cities: ['A'], tz: 'Asia/Tokyo' });
+    const hotel = await createBooking(db, { ...emptyBooking('alojamiento'), name: 'Hotel de prueba' });
+    const [d1] = await listDays(db, trip.id);
+    expect(d1?.lodgingId).toBeNull();
+
+    await setDayLodging(db, d1!.id, hotel.id);
+    expect((await listDays(db, trip.id))[0]?.lodgingId).toBe(hotel.id);
+
+    await deleteBooking(db, hotel.id);
+    expect((await listDays(db, trip.id))[0]?.lodgingId).toBeNull();
+  });
+
+  it('rechaza reservas que no son alojamientos y días que no existen', async () => {
+    db = freshDb();
+    const trip = await saveTrip(db, { name: 'Viaje', startDate: '2030-04-01', endDate: '2030-04-01', cities: [], tz: 'Asia/Tokyo' });
+    const cena = await createBooking(db, { ...emptyBooking('restaurante'), name: 'Cena' });
+    const [d1] = await listDays(db, trip.id);
+    await expect(setDayLodging(db, d1!.id, cena.id)).rejects.toThrow(/no existe/);
+    await expect(setDayLodging(db, 'nada', null)).rejects.toThrow(/no existe/);
+  });
+});
+
+describe('copias antiguas', () => {
+  it('al importar una copia anterior se quitan localizadores y QR y se rellenan los campos nuevos', () => {
+    const oldBackup = zipSync({
+      'manifest.json': strToU8(JSON.stringify({ format: BACKUP_FORMAT, formatVersion: BACKUP_FORMAT_VERSION, schemaVersion: 1, exportedAt: '2030-01-01T00:00:00Z', counts: {} })),
+      'data.json': strToU8(
+        JSON.stringify({
+          trips: [],
+          days: [{ id: 'd1', tripId: 't', date: '2030-04-01', city: '' }],
+          bookings: [{ id: 'b1', name: 'Hotel', category: 'alojamiento', status: 'confirmada', confirmationCode: 'SECRETO', createdAt: 1, updatedAt: 1 }],
+          activities: [],
+          attachments: [
+            { id: 'a1', bookingId: 'b1', kind: 'code', name: 'qr.png', mime: 'image/png', size: 1, createdAt: 1, path: 'attachments/a1' },
+            { id: 'a2', bookingId: 'b1', kind: 'image', name: 'foto.png', mime: 'image/png', size: 1, createdAt: 1, path: 'attachments/a2' },
+          ],
+        }),
+      ),
+      'attachments/a1': new Uint8Array([1]),
+      'attachments/a2': new Uint8Array([2]),
+    });
+    const parsed = parseBackup(oldBackup);
+    expect(parsed.attachments.map((a) => a.id)).toEqual(['a2']);
+    expect(parsed.bookings[0]).not.toHaveProperty('confirmationCode');
+    expect(parsed.bookings[0]?.legs).toEqual([]);
+    expect(parsed.days[0]?.lodgingId).toBeNull();
+    expect(JSON.stringify(parsed)).not.toContain('SECRETO');
+    expect(CURRENT_SCHEMA_VERSION).toBe(2);
+  });
+});

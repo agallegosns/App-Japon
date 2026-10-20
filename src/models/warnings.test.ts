@@ -76,12 +76,11 @@ describe('avisos de datos que faltan', () => {
       checkOut: null,
       address: 'Calle',
       addressJa: '',
-      confirmationCode: '',
+      legs: [],
     } as unknown as Booking;
     expect(bookingWarnings(b)).toEqual([
       'Falta el check-out',
       'Falta la dirección en japonés',
-      'Falta el localizador',
     ]);
   });
 });

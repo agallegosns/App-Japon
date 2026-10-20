@@ -36,10 +36,9 @@ describe('reservas: CRUD', () => {
       ...emptyBooking('alojamiento'),
       name: 'Hotel editado',
       status: 'confirmada',
-      confirmationCode: 'ABC123',
       checkIn: { date: '2030-03-30', time: '15:00', tz: 'Asia/Tokyo' },
     });
-    expect(updated.confirmationCode).toBe('ABC123');
+    expect(updated.status).toBe('confirmada');
     expect((await listBookings(db))[0]?.id).toBe(hotel.id);
     expect((await getBackupStatus(db)).changesSinceBackup).toBe(4);
   });
@@ -82,7 +81,7 @@ describe('adjuntos', () => {
     db = freshDb();
     const b = await createBooking(db, { ...emptyBooking('entrada'), name: 'Museo' });
     const bytes = Array.from({ length: 2048 }, (_, i) => (i * 7) % 256);
-    await addAttachment(db, b.id, bytesBlob(bytes, 'image/png'), 'qr.png', 'code');
+    await addAttachment(db, b.id, bytesBlob(bytes, 'image/png'), 'captura.png', 'image');
     await addAttachment(db, b.id, bytesBlob([37, 80, 68, 70], 'application/pdf'), 'billete.pdf');
 
     const name = db.name;
@@ -93,7 +92,7 @@ describe('adjuntos', () => {
     const list = (await listAttachments(db, b.id)).sort((x, y) => x.name.localeCompare(y.name));
     expect(list.map((a) => [a.name, a.kind, a.size])).toEqual([
       ['billete.pdf', 'pdf', 4],
-      ['qr.png', 'code', 2048],
+      ['captura.png', 'image', 2048],
     ]);
     const first = list[1];
     expect(first?.blob).toBeInstanceOf(Blob);

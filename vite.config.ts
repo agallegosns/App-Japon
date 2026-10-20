@@ -44,9 +44,8 @@ export default defineConfig({
       },
       injectManifest: {
         globPatterns: ['**/*.{js,mjs,css,html,svg,png,woff2,webmanifest,jpg}', 'pdfjs/**/*'],
-        // Recursos grandes de OCR, traducción y mapas: se descargan bajo demanda
-        // desde el Laboratorio y quedan en Cache Storage / IndexedDB.
-        globIgnores: ['tesseract/**', 'ort/**', 'offline/**', '**/*.map'],
+        // Recursos grandes de OCR y mapas de prueba: se descargan bajo demanda y quedan en Cache Storage.
+        globIgnores: ['tesseract/**', 'offline/**', '**/*.map'],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
       },
       devOptions: { enabled: false },

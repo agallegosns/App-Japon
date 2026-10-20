@@ -1,8 +1,10 @@
-import { Plus, Trash2 } from 'lucide-react';
+import { Plane, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { airportFromLabel } from '../../models/airports';
+import { emptyLeg, formatMinutes, layoverMinutes, routeText } from '../../models/flights';
 import { BOOKING_STATUS_LABEL, CATEGORY_LABEL } from '../../models/labels';
-import { BOOKING_CATEGORIES, BOOKING_STATUSES, DEFAULT_TZ, type BookingCategory } from '../../models/types';
+import { BOOKING_CATEGORIES, BOOKING_STATUSES, DEFAULT_TZ, type BookingCategory, type FlightLeg } from '../../models/types';
 import { createBooking, emptyBooking, getBooking, updateBooking, validateBooking, type BookingInput } from '../../storage/bookings';
 import { getDb } from '../../storage/db';
 import { getTrip } from '../../storage/trips';
@@ -13,6 +15,7 @@ import { DateTimeField } from '../../ui/DateTimeField';
 import { SelectField, TextArea, TextField } from '../../ui/Field';
 import { Notice } from '../../ui/Notice';
 import { PageHeader } from '../../ui/PageHeader';
+import { AirportField } from './AirportField';
 import { ErrorState, LoadingState, errorMessage } from '../../ui/States';
 import { useToast } from '../../ui/Toast';
 
@@ -43,7 +46,9 @@ export function BookingFormPage() {
   const [tripTz, setTripTz] = useState(DEFAULT_TZ);
   const [form, setForm] = useState<BookingInput>(() => {
     const c = params.get('cat');
-    return emptyBooking(BOOKING_CATEGORIES.includes(c as BookingCategory) ? (c as BookingCategory) : 'otro');
+    const cat = BOOKING_CATEGORIES.includes(c as BookingCategory) ? (c as BookingCategory) : 'otro';
+    const base = emptyBooking(cat);
+    return cat === 'vuelo' ? { ...base, legs: [emptyLeg()] } : base;
   });
   const [priceText, setPriceText] = useState('');
   const [currency, setCurrency] = useState('EUR');
@@ -59,7 +64,12 @@ export function BookingFormPage() {
         if (booking) {
           const { id: _i, sortAt: _s, createdAt: _c, updatedAt: _u, ...input } = booking;
           void [_i, _s, _c, _u];
-          setForm(input);
+          // Vuelo antiguo sin tramos: se convierte en un único tramo con sus fechas.
+          const legs: FlightLeg[] =
+            booking.category === 'vuelo' && booking.legs.length === 0
+              ? [{ ...emptyLeg(), depart: booking.start, arrive: booking.arrival }]
+              : booking.legs;
+          setForm({ ...input, legs });
           if (booking.price) {
             setPriceText(String(booking.price.amount).replace('.', ','));
             setCurrency(booking.price.currency);
@@ -81,7 +91,8 @@ export function BookingFormPage() {
       if (!Number.isFinite(amount)) priceErrors.price = 'Escribe el precio como número (p. ej. 120,50).';
       else price = { amount, currency };
     }
-    const input: BookingInput = { ...form, price };
+    const autoName = form.category === 'vuelo' ? routeText(form.legs) : '';
+    const input: BookingInput = { ...form, name: form.name.trim() || autoName, price };
     const errs = { ...validateBooking(input), ...priceErrors };
     setErrors(errs);
     if (Object.keys(errs).length) {
@@ -103,6 +114,8 @@ export function BookingFormPage() {
 
   const c = form.category;
   const isTransport = c === 'vuelo' || c === 'transporte';
+  const setLeg = (i: number, patch: Partial<FlightLeg>) =>
+    setForm((f) => ({ ...f, legs: f.legs.map((l, j) => (j === i ? { ...l, ...patch } : l)) }));
 
   return (
     <>
@@ -118,14 +131,14 @@ export function BookingFormPage() {
                 label="Categoría"
                 value={c}
                 options={BOOKING_CATEGORIES.map((v) => ({ value: v, label: CATEGORY_LABEL[v] }))}
-                onChange={(v) => set('category', v)}
+                onChange={(v) => setForm((f) => ({ ...f, category: v, legs: v === 'vuelo' && f.legs.length === 0 ? [emptyLeg()] : f.legs }))}
               />
               <TextField
                 label="Nombre"
                 value={form.name}
                 onChange={(v) => set('name', v)}
                 error={errors.name}
-                placeholder={c === 'vuelo' ? 'Compañía, número de vuelo, origen → destino' : undefined}
+                placeholder={c === 'vuelo' ? 'Opcional: si lo dejas vacío se usa la ruta' : undefined}
                 autoComplete="off"
               />
               <SelectField
@@ -137,6 +150,97 @@ export function BookingFormPage() {
             </div>
           </Card>
 
+          {c === 'vuelo' && (
+            <Card title="Tramos del vuelo">
+              <div className="stack">
+                <p className="muted small">
+                  Añade un tramo por cada despegue. Un vuelo con una escala tiene dos tramos. Las horas son siempre las locales del
+                  aeropuerto.
+                </p>
+                {form.legs.map((leg, i) => {
+                  const prev = form.legs[i - 1];
+                  const gap = prev ? layoverMinutes(prev, leg) : null;
+                  return (
+                    <div key={leg.id} className="stack" style={{ paddingBottom: 'var(--sp-3)', borderBottom: '1px solid var(--c-border)' }}>
+                      {prev && (
+                        <p className={gap !== null && gap < 0 ? 'field-error' : 'muted small'}>
+                          Escala en {prev.to || 'la escala'}
+                          {gap !== null ? `: ${formatMinutes(gap)}` : ' (rellena las horas para ver cuánto dura)'}
+                        </p>
+                      )}
+                      <p style={{ fontWeight: 600 }}>
+                        <Plane size={16} aria-hidden="true" style={{ verticalAlign: '-2px' }} /> Tramo {i + 1}
+                      </p>
+                      <AirportField
+                        label={`Tramo ${i + 1}: origen`}
+                        value={leg.from}
+                        onChange={(v, a) =>
+                          setLeg(i, { from: v, ...(a && leg.depart ? { depart: { ...leg.depart, tz: a.tz } } : {}) })
+                        }
+                      />
+                      <AirportField
+                        label={`Tramo ${i + 1}: destino`}
+                        value={leg.to}
+                        onChange={(v, a) =>
+                          setLeg(i, { to: v, ...(a && leg.arrive ? { arrive: { ...leg.arrive, tz: a.tz } } : {}) })
+                        }
+                      />
+                      <TextField
+                        label={`Tramo ${i + 1}: número de vuelo (opcional)`}
+                        value={leg.flightNumber}
+                        onChange={(v) => setLeg(i, { flightNumber: v })}
+                        autoCapitalize="characters"
+                        autoComplete="off"
+                        spellCheck={false}
+                      />
+                      <DateTimeField
+                        label={`Tramo ${i + 1}: salida`}
+                        value={leg.depart}
+                        onChange={(v) => setLeg(i, { depart: v })}
+                        defaultTz={airportFromLabel(leg.from)?.tz ?? prev?.arrive?.tz ?? tripTz}
+                        showTz
+                        hint="Hora local del aeropuerto de origen."
+                        error={errors[`legs.${i}.depart`]}
+                      />
+                      <DateTimeField
+                        label={`Tramo ${i + 1}: llegada`}
+                        value={leg.arrive}
+                        onChange={(v) => setLeg(i, { arrive: v })}
+                        defaultTz={airportFromLabel(leg.to)?.tz ?? tripTz}
+                        showTz
+                        hint="Hora local del aeropuerto de destino."
+                        error={errors[`legs.${i}.arrive`]}
+                      />
+                      {form.legs.length > 1 && (
+                        <Button
+                          variant="ghost"
+                          small
+                          icon={<Trash2 size={16} />}
+                          onClick={() => setForm((f) => ({ ...f, legs: f.legs.filter((_, j) => j !== i) }))}
+                        >
+                          Quitar tramo {i + 1}
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
+                <Button
+                  variant="secondary"
+                  icon={<Plus size={18} />}
+                  onClick={() =>
+                    setForm((f) => {
+                      const last = f.legs[f.legs.length - 1];
+                      return { ...f, legs: [...f.legs, { ...emptyLeg(), from: last?.to ?? '' }] };
+                    })
+                  }
+                >
+                  Añadir escala (otro tramo)
+                </Button>
+              </div>
+            </Card>
+          )}
+
+          {c !== 'vuelo' && (
           <Card title="Fechas">
             <div className="stack">
               {c === 'alojamiento' ? (
@@ -169,6 +273,7 @@ export function BookingFormPage() {
               )}
             </div>
           </Card>
+          )}
 
           <Card title="Lugar y contacto">
             <div className="stack">
@@ -186,16 +291,8 @@ export function BookingFormPage() {
             </div>
           </Card>
 
-          <Card title="Reserva">
+          <Card title="Precio y notas">
             <div className="stack">
-              <TextField
-                label="Localizador"
-                value={form.confirmationCode}
-                onChange={(v) => set('confirmationCode', v)}
-                autoCapitalize="characters"
-                autoComplete="off"
-                spellCheck={false}
-              />
               <div className="input-row">
                 <TextField label="Precio (opcional)" inputMode="decimal" value={priceText} onChange={setPriceText} error={errors.price} autoComplete="off" />
                 <SelectField label="Moneda" value={currency} options={CURRENCIES.map((v) => ({ value: v, label: v }))} onChange={setCurrency} />
@@ -237,7 +334,7 @@ export function BookingFormPage() {
             </div>
           </Card>
 
-          {!id && <Notice tone="info">Los adjuntos (PDF, capturas y códigos QR) se añaden desde la ficha de la reserva, después de guardarla.</Notice>}
+          {!id && <Notice tone="info">Los adjuntos (PDF o capturas) se añaden desde la ficha de la reserva, después de guardarla. Por seguridad no hay campo de localizador ni de códigos QR.</Notice>}
 
           <Button type="submit" variant="primary" block disabled={saving}>
             {saving ? 'Guardando…' : 'Guardar reserva'}
