@@ -4,6 +4,7 @@ import {
   FileText,
   Image as ImageIcon,
   Navigation,
+  TrainFront,
   MoreHorizontal,
   Paperclip,
   Pencil,
@@ -17,8 +18,9 @@ import { formatDateShort, formatLdt } from '../../models/datetime';
 import { nightsBetween, summarizeTaxes, taxTotal, totalIn } from '../../models/taxes';
 import { useFxRate } from '../../storage/useFxRate';
 import { RateLine } from '../../ui/Rate';
-import { bookingDirectionsUrl, TRAVEL_MODE_LABEL, type TravelMode } from '../itinerary/mapLinks';
-import { formatMinutes, layoverMinutes, legMinutes, routeText } from '../../models/flights';
+import { bookingDirectionsUrl, TRAVEL_MODE_LABEL, transitRouteUrl, type TravelMode } from '../itinerary/mapLinks';
+import { formatMinutes, layoverMinutes, legMinutes, routeText, seatText } from '../../models/flights';
+import { FARE_LABEL } from '../../models/labels';
 import { ATTACHMENT_KIND_LABEL, BOOKING_STATUS_LABEL, CATEGORY_LABEL } from '../../models/labels';
 import type { Attachment, AttachmentKind, Booking } from '../../models/types';
 import { bookingWarnings } from '../../models/warnings';
@@ -117,7 +119,7 @@ function Detail({ booking: b, attachments, activities }: NonNullable<Awaited<Ret
         </Notice>
       )}
 
-      {b.category === 'vuelo' && b.legs.length > 0 ? (
+      {(b.category === 'vuelo' || b.category === 'transporte') && b.legs.length > 0 ? (
         <FlightLegs booking={b} />
       ) : (
         <Card title="Fechas">
@@ -389,9 +391,10 @@ function Attachments({ booking, attachments }: { booking: Booking; attachments: 
 
 
 function FlightLegs({ booking: b }: { booking: Booking }) {
+  const isTrain = b.category === 'transporte';
   const route = routeText(b.legs);
   return (
-    <Card title={b.legs.length > 1 ? `Vuelo con ${b.legs.length - 1} escala${b.legs.length > 2 ? 's' : ''}` : 'Vuelo'}>
+    <Card title={isTrain ? (b.legs.length > 1 ? `Tren con ${b.legs.length - 1} transbordo${b.legs.length > 2 ? 's' : ''}` : 'Trayecto en tren') : b.legs.length > 1 ? `Vuelo con ${b.legs.length - 1} escala${b.legs.length > 2 ? 's' : ''}` : 'Vuelo'}>
       <div className="stack">
         {route && <p className="break" style={{ fontWeight: 600 }}>{route}</p>}
         <ol className="stack" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
@@ -403,7 +406,7 @@ function FlightLegs({ booking: b }: { booking: Booking }) {
               <li key={leg.id} className="stack" style={{ gap: 'var(--sp-1)' }}>
                 {prev && (
                   <p className="muted small" style={{ borderTop: '1px dashed var(--c-border)', paddingTop: 'var(--sp-2)' }}>
-                    Escala en {prev.to || 'la escala'}
+                    {isTrain ? 'Transbordo' : 'Escala'} en {prev.to || (isTrain ? 'la estación' : 'la escala')}
                     {gap !== null ? `: ${formatMinutes(gap)}` : ''}
                   </p>
                 )}
@@ -424,6 +427,18 @@ function FlightLegs({ booking: b }: { booking: Booking }) {
                       <dd>{formatMinutes(dur)}</dd>
                     </>
                   )}
+                  {isTrain && leg.fare && (
+                    <>
+                      <dt>Billete</dt>
+                      <dd>{FARE_LABEL[leg.fare]}</dd>
+                    </>
+                  )}
+                  {isTrain && seatText(leg) && (
+                    <>
+                      <dt>Plaza</dt>
+                      <dd className="seat-big">{seatText(leg)}</dd>
+                    </>
+                  )}
                 </dl>
               </li>
             );
@@ -437,7 +452,7 @@ function FlightLegs({ booking: b }: { booking: Booking }) {
 function DirectionsButtons({ booking: b }: { booking: Booking }) {
   const modes: TravelMode[] = ['transit', 'walking', 'driving'];
   return (
-    <Card title="Cómo llegar">
+    <Card title={b.category === 'transporte' ? 'Cómo llegar a la estación' : 'Cómo llegar'}>
       <div className="stack">
         {modes.map((m, i) => (
           <a
@@ -450,7 +465,18 @@ function DirectionsButtons({ booking: b }: { booking: Booking }) {
             <Navigation size={18} aria-hidden="true" /> {TRAVEL_MODE_LABEL[m]}
           </a>
         ))}
-        <p className="muted small">Abre Google Maps desde donde estés. Necesita conexión.</p>
+        {b.category === 'transporte' &&
+          b.legs
+            .filter((l) => transitRouteUrl(l.from, l.to))
+            .map((l) => (
+              <a key={l.id} className="btn btn-secondary btn-block" href={transitRouteUrl(l.from, l.to) ?? undefined} target="_blank" rel="noopener noreferrer">
+                <TrainFront size={18} aria-hidden="true" /> Ver {l.from} → {l.to} en Google Maps
+              </a>
+            ))}
+        <p className="muted small">
+          {b.category === 'transporte' ? 'Lleva a la estación de salida y muestra los horarios de los trenes. ' : ''}Abre Google Maps desde donde estés. Necesita
+          conexión.
+        </p>
       </div>
     </Card>
   );

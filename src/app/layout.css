@@ -1494,3 +1494,69 @@
 .hero-compact .hero-number {
   white-space: nowrap;
 }
+
+/* =====================================================================
+   v0.8: trenes (día de traslado, vagón y asiento)
+   ===================================================================== */
+.transit-day {
+  border-color: var(--c-info);
+  background: linear-gradient(180deg, var(--c-info-soft), #fff 75%);
+}
+.transit-day .flight-day-head {
+  color: var(--c-info);
+}
+.transit-day .flight-day-icon {
+  background: var(--c-info);
+}
+.day-chip.has-transit {
+  border-color: var(--c-info);
+  background: var(--c-info-soft);
+}
+.day-chip.has-transit[aria-pressed='true'] {
+  background: var(--c-info);
+  border-color: var(--c-info);
+  color: #fff;
+}
+.day-chip.has-transit .day-chip-plane {
+  color: var(--c-info);
+}
+.day-chip.has-transit[aria-pressed='true'] .day-chip-plane {
+  color: #fff;
+}
+.cal-train {
+  color: var(--c-info);
+}
+.cal-day.is-selected .cal-train {
+  color: #8fc2ee;
+}
+.kind-transit .plan-dot {
+  background: var(--c-info);
+  color: #fff;
+}
+.kind-transit .plan-title {
+  color: var(--c-info);
+}
+.seat-chip {
+  display: inline-block;
+  margin-top: var(--sp-2);
+  padding: 4px 12px;
+  border-radius: var(--r-full);
+  background: var(--c-info-soft);
+  color: var(--c-info);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+}
+.seat-big {
+  font-size: var(--fs-lg);
+  font-weight: 800;
+}
+.warn-text {
+  color: var(--c-warning);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.move-chip {
+  border-color: var(--c-info);
+  background: var(--c-info-soft);
+  color: var(--c-info);
+}

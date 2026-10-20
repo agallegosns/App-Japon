@@ -94,3 +94,23 @@ describe('actividades de todo el día', () => {
     expect(detectOverlaps(list).size).toBe(0);
   });
 });
+
+describe('avisos de trenes', () => {
+  const ldt = (time: string) => ({ date: '2030-05-05', time, tz: 'Asia/Tokyo' });
+  const leg = (patch: object) => ({ id: 'l', from: 'Tokio', to: 'Kioto', flightNumber: '', car: '', seat: '', fare: '' as const, depart: ldt('09:00'), arrive: ldt('11:00'), ...patch });
+  const tren = (legs: object[]) =>
+    ({ category: 'transporte', status: 'confirmada', start: ldt('09:00'), arrival: ldt('13:00'), checkIn: null, checkOut: null, address: '', legs }) as unknown as Booking;
+
+  it('avisa si un billete con asiento reservado no tiene vagón o asiento, pero no con Suica', () => {
+    expect(bookingWarnings(tren([leg({ fare: 'reservado', car: '7' })]))).toContain('Falta el vagón o el asiento del trayecto 1');
+    expect(bookingWarnings(tren([leg({ fare: 'reservado', car: '7', seat: '12A' })]))).toEqual([]);
+    expect(bookingWarnings(tren([leg({ fare: 'suica' })]))).toEqual([]);
+  });
+
+  it('avisa de un transbordo muy justo, pero no de uno razonable', () => {
+    const corto = [leg({ arrive: ldt('11:00') }), leg({ id: 'm', from: 'Kioto', to: 'Nara', depart: ldt('11:05'), arrive: ldt('12:00') })];
+    const normal = [leg({ arrive: ldt('11:00') }), leg({ id: 'm', from: 'Kioto', to: 'Nara', depart: ldt('11:20'), arrive: ldt('12:00') })];
+    expect(bookingWarnings(tren(corto)).some((w) => w.startsWith('Transbordo muy justo en Kioto'))).toBe(true);
+    expect(bookingWarnings(tren(normal)).some((w) => w.startsWith('Transbordo'))).toBe(false);
+  });
+});

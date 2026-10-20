@@ -12,10 +12,15 @@ function set(rate: FxRate): void {
   listeners.forEach((l) => l());
 }
 
-/** Descarga la cotización del BCE (una sola petición a la vez) y la guarda. */
-export function refreshRate(): Promise<FxRate> {
+/**
+ * Descarga la cotización del BCE (una sola petición a la vez) y la guarda.
+ * `force` = la pidió el usuario con el botón «Actualizar»: sustituye incluso a una cotización escrita a mano.
+ * Si no, una respuesta que llega tarde NO pisa una cotización manual puesta mientras tanto.
+ */
+export function refreshRate(force = false): Promise<FxRate> {
   inflight ??= fetchBceRate()
     .then((r) => {
+      if (!force && current.source === 'manual') return current;
       set(r);
       return r;
     })
@@ -43,7 +48,7 @@ export interface FxState {
   rate: FxRate;
   refreshing: boolean;
   error: string | null;
-  refresh: () => Promise<void>;
+  refresh: (force?: boolean) => Promise<void>;
 }
 
 /**
@@ -63,11 +68,11 @@ export function useFxRate(autoRefresh = true): FxState {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (force = true) => {
     setRefreshing(true);
     setError(null);
     try {
-      await refreshRate();
+      await refreshRate(force);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -76,7 +81,7 @@ export function useFxRate(autoRefresh = true): FxState {
   }, []);
 
   useEffect(() => {
-    if (autoRefresh && navigator.onLine && needsRefresh(current)) void refresh();
+    if (autoRefresh && navigator.onLine && needsRefresh(current)) void refresh(false);
   }, [autoRefresh, refresh]);
 
   return { rate, refreshing, error, refresh };

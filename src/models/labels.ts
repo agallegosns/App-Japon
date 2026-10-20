@@ -1,4 +1,4 @@
-import type { ActivityStatus, AttachmentKind, BookingCategory, BookingStatus } from './types';
+import type { ActivityStatus, AttachmentKind, BookingCategory, BookingStatus, LegFare } from './types';
 
 export const CATEGORY_LABEL: Record<BookingCategory, string> = {
   vuelo: 'Vuelo',
@@ -24,4 +24,11 @@ export const ACTIVITY_STATUS_LABEL: Record<ActivityStatus, string> = {
 export const ATTACHMENT_KIND_LABEL: Record<AttachmentKind, string> = {
   pdf: 'PDF',
   image: 'Imagen',
+};
+
+export const FARE_LABEL: Record<LegFare, string> = {
+  suica: 'Suica / IC (sin reserva)',
+  reservado: 'Billete con asiento reservado',
+  libre: 'Billete sin reserva de asiento',
+  pase: 'Pase (JR Pass u otro)',
 };

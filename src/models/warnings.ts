@@ -1,5 +1,5 @@
 import { timeToMinutes } from './datetime';
-import { formatMinutes, layoverMinutes, SHORT_LAYOVER_MIN } from './flights';
+import { formatMinutes, layoverMinutes, SHORT_LAYOVER_MIN, SHORT_TRANSFER_MIN } from './flights';
 import type { Activity, Booking, Day } from './types';
 
 export interface Interval {
@@ -70,11 +70,15 @@ export function bookingWarnings(b: Booking): string[] {
       else if (!b.start.time) out.push('Falta la hora de salida');
       if (!b.arrival?.time) out.push('Falta la hora de llegada');
       b.legs.forEach((leg, i) => {
+        if (b.category === 'transporte' && leg.fare === 'reservado' && (!leg.car.trim() || !leg.seat.trim()))
+          out.push(`Falta el vagón o el asiento del trayecto ${i + 1}`);
         const prev = b.legs[i - 1];
         if (!prev) return;
         const gap = layoverMinutes(prev, leg);
-        if (gap !== null && gap >= 0 && gap < SHORT_LAYOVER_MIN)
-          out.push(`Escala muy corta en ${prev.to || 'la escala'} (${formatMinutes(gap)})`);
+        if (gap === null || gap < 0) return;
+        if (b.category === 'vuelo' && gap < SHORT_LAYOVER_MIN) out.push(`Escala muy corta en ${prev.to || 'la escala'} (${formatMinutes(gap)})`);
+        if (b.category === 'transporte' && gap < SHORT_TRANSFER_MIN)
+          out.push(`Transbordo muy justo en ${prev.to || 'la estación'} (${formatMinutes(gap)})`);
       });
       break;
     case 'alojamiento':

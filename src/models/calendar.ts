@@ -1,5 +1,5 @@
 import { addDays } from './datetime';
-import { flightDates } from './dayEvents';
+import { flightDates, transitDates } from './dayEvents';
 import type { Activity, Booking } from './types';
 
 /** Mes en formato AAAA-MM. */
@@ -45,13 +45,15 @@ export function monthGrid(ym: YearMonth): string[][] {
 
 export interface DayMarkers {
   flight: boolean;
+  /** Hay un trayecto en tren/transporte (día de traslado). */
+  transit: boolean;
   activities: number;
   bookings: number;
   /** Día en que hay check-in o check-out de un alojamiento. */
   lodging: boolean;
 }
 
-const EMPTY: DayMarkers = { flight: false, activities: 0, bookings: 0, lodging: false };
+const EMPTY: DayMarkers = { flight: false, transit: false, activities: 0, bookings: 0, lodging: false };
 
 export function emptyMarkers(): DayMarkers {
   return { ...EMPTY };
@@ -70,12 +72,13 @@ export function calendarMarkers(activities: Activity[], bookings: Booking[]): Ma
   };
   for (const a of activities) if (a.status !== 'omitida') at(a.date).activities++;
   for (const d of flightDates(bookings)) at(d).flight = true;
+  for (const d of transitDates(bookings)) at(d).transit = true;
   for (const b of bookings) {
     if (b.status === 'cancelada') continue;
     if (b.category === 'alojamiento') {
       if (b.checkIn) at(b.checkIn.date).lodging = true;
       if (b.checkOut) at(b.checkOut.date).lodging = true;
-    } else if (b.category !== 'vuelo' && b.start) {
+    } else if (b.category !== 'vuelo' && !(b.category === 'transporte' && b.legs.length > 0) && b.start) {
       at(b.start.date).bookings++;
     }
   }

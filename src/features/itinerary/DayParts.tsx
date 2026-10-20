@@ -1,9 +1,9 @@
-import { BedDouble, ChevronRight, MapPin, Plane, Ticket } from 'lucide-react';
+import { ArrowRight, BedDouble, ChevronRight, MapPin, Plane, Ticket, TrainFront } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { formatLdt } from '../../models/datetime';
 import { type FlightOnDay } from '../../models/dayEvents';
-import { formatMinutes, layoverMinutes, legMinutes } from '../../models/flights';
-import { CATEGORY_LABEL } from '../../models/labels';
+import { formatMinutes, layoverMinutes, legMinutes, seatText } from '../../models/flights';
+import { CATEGORY_LABEL, FARE_LABEL } from '../../models/labels';
 import { dayLodging, lodgingChangesOn } from '../../models/lodging';
 import type { Booking, Day } from '../../models/types';
 import { setDayCity, setDayLodging } from '../../storage/trips';
@@ -62,6 +62,73 @@ export function FlightDayCard({ flights }: { flights: FlightOnDay[] }) {
   );
 }
 
+/** Bloque destacado de un día con trenes: trayectos, vagón, asiento y tipo de billete. */
+export function TransferDayCard({ transfers, from, to }: { transfers: FlightOnDay[]; from?: string; to?: string }) {
+  if (transfers.length === 0) return null;
+  return (
+    <section className="flight-day transit-day" aria-label="Día de traslado">
+      <div className="flight-day-head">
+        <span className="flight-day-icon" aria-hidden="true">
+          <TrainFront size={20} />
+        </span>
+        <strong>{from && to ? `Hoy te mueves de ${from} a ${to}` : 'Día de traslado'}</strong>
+      </div>
+      {transfers.map((f) => (
+        <Link key={f.booking.id} to={`/reservas/${f.booking.id}`} className="flight-day-item">
+          <div className="grow">
+            <p className="flight-day-name break">{f.booking.name}</p>
+            <ul className="flight-legs">
+              {f.legs.map((l) => {
+                const i = f.allLegs.findIndex((x) => x.id === l.id);
+                const prev = i > 0 ? f.allLegs[i - 1] : undefined;
+                const gap = prev ? layoverMinutes(prev, l) : null;
+                const dur = legMinutes(l);
+                return (
+                  <li key={l.id}>
+                    {gap !== null && gap >= 0 && prev && (
+                      <p className="flight-layover">
+                        Transbordo en {prev.to || 'la estación'}: {formatMinutes(gap)}
+                      </p>
+                    )}
+                    <p className="flight-route">
+                      {l.from || l.to ? `${l.from || '?'} → ${l.to || '?'}` : 'Tren'}
+                      {l.flightNumber ? <span className="muted"> · {l.flightNumber}</span> : null}
+                    </p>
+                    <p className="small muted">
+                      Sale {l.depart ? formatLdt(l.depart) : 'sin hora'}
+                      <br />
+                      Llega {l.arrive ? formatLdt(l.arrive) : 'sin hora'}
+                      {dur !== null ? ` · ${formatMinutes(dur)}` : ''}
+                    </p>
+                    {l.fare === 'suica' ? (
+                      <p className="seat-chip">Con Suica: pasa la tarjeta, sin asiento</p>
+                    ) : (
+                      (seatText(l) || l.fare) && <p className="seat-chip">{seatText(l) || FARE_LABEL[l.fare as keyof typeof FARE_LABEL]}</p>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+          <ChevronRight size={20} aria-hidden="true" />
+        </Link>
+      ))}
+    </section>
+  );
+}
+
+/** Chip «Hoy te mueves de A a B» cuando la ciudad del día cambia respecto a la anterior. */
+export function MoveChip({ from, to }: { from: string; to: string }) {
+  return (
+    <span className="chip-link move-chip">
+      <MapPin size={16} aria-hidden="true" />
+      <span className="break">{from}</span>
+      <ArrowRight size={14} aria-hidden="true" />
+      <span className="break">{to}</span>
+    </span>
+  );
+}
+
 /** Reservas de ese día (restaurantes, entradas, trenes…) que no están ya en una actividad. */
 export function DayBookings({ bookings }: { bookings: Booking[] }) {
   if (bookings.length === 0) return null;
@@ -96,11 +163,12 @@ interface HeaderProps {
   dayNumber: number | null;
   totalDays: number;
   cities: string[];
+  prevCity?: string;
   bookings: Booking[];
 }
 
 /** Cabecera compacta del día: número de día, ciudad, dónde se duerme y cambios de hotel. */
-export function DayHeader({ date, title, day, dayNumber, totalDays, cities, bookings }: HeaderProps) {
+export function DayHeader({ date, title, day, dayNumber, totalDays, cities, prevCity, bookings }: HeaderProps) {
   const toast = useToast();
   const lodging = dayLodging(date, day, bookings);
   const changes = lodgingChangesOn(date, bookings);
@@ -131,6 +199,7 @@ export function DayHeader({ date, title, day, dayNumber, totalDays, cities, book
             </select>
           </label>
         )}
+        {day?.city && prevCity && day.city !== prevCity && <MoveChip from={prevCity} to={day.city} />}
         {sleeps.map((b) => (
           <Link key={b.id} to={`/reservas/${b.id}`} className="chip-link">
             <BedDouble size={16} aria-hidden="true" />

@@ -70,6 +70,12 @@ FIXTURES[3] = {
   meta: FIXTURES[2]!.meta!,
 };
 
+// La versión 4 añade vagón, asiento y tipo de billete a los tramos.
+FIXTURES[4] = {
+  ...FIXTURES[3],
+  bookings: FIXTURES[3]!.bookings!.map((b) => ({ ...b, legs: [] })),
+};
+
 describe('migraciones de IndexedDB', () => {
   it('cada versión publicada tiene fixture y las versiones son crecientes', () => {
     const versions = SCHEMA_HISTORY.map((v) => v.version);
@@ -147,13 +153,32 @@ describe('migraciones de IndexedDB', () => {
 
     const db = new NihonDB(name);
     await db.open();
-    expect(db.verno).toBe(3);
+    expect(db.verno).toBe(4);
     const hotel = await db.bookings.get('b1');
     expect(hotel).not.toHaveProperty('addressJa');
     expect(hotel).toMatchObject({ name: 'Hotel', guests: 2, taxes: [] });
     const act = await db.activities.get('x1');
     expect(act).not.toHaveProperty('addressJa');
     expect(act).toMatchObject({ title: 'Paseo', allDay: false });
+    await db.delete();
+  });
+
+  it('v3 → v4: los tramos existentes reciben vagón, asiento y billete vacíos sin perder nada', async () => {
+    const name = `mig-v4-${Math.random()}`;
+    const old = new Dexie(name);
+    old.version(1).stores(SCHEMA_HISTORY[0]!.stores as Record<string, string>);
+    old.version(2).stores({});
+    old.version(3).stores({});
+    await old.open();
+    const leg = { id: 'l1', from: 'Madrid (MAD)', to: 'Doha (DOH)', flightNumber: 'QR150', depart: null, arrive: null };
+    await old.table('bookings').bulkAdd([{ ...FIXTURES[3]!.bookings![0]!, category: 'vuelo', legs: [leg] }]);
+    old.close();
+
+    const db = new NihonDB(name);
+    await db.open();
+    expect(db.verno).toBe(4);
+    const b = await db.bookings.get('b1');
+    expect(b?.legs).toEqual([{ ...leg, car: '', seat: '', fare: '' }]);
     await db.delete();
   });
 });

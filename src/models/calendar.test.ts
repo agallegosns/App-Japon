@@ -15,15 +15,15 @@ describe('calendario del mes', () => {
   it('un mes que empieza en lunes no añade días anteriores', () => {
     const grid = monthGrid('2030-04'); // 1 abr 2030 es lunes
     expect(grid[0]?.[0]).toBe('2030-04-01');
-    expect(monthGrid('2027-02').flat().filter((d) => monthOf(d) === '2027-02')).toHaveLength(28);
+    expect(monthGrid('2031-02').flat().filter((d) => monthOf(d) === '2031-02')).toHaveLength(28);
   });
 
   it('navega entre meses cruzando el año', () => {
-    expect(addMonths('2026-12', 1)).toBe('2027-01');
-    expect(addMonths('2027-01', -1)).toBe('2026-12');
-    expect(addMonths('2027-05', 0)).toBe('2027-05');
-    expect(addMonths('2027-05', 13)).toBe('2028-06');
-    expect(monthLabel('2027-05')).toBe('Mayo de 2027');
+    expect(addMonths('2030-12', 1)).toBe('2031-01');
+    expect(addMonths('2031-01', -1)).toBe('2030-12');
+    expect(addMonths('2031-05', 0)).toBe('2031-05');
+    expect(addMonths('2031-05', 13)).toBe('2032-06');
+    expect(monthLabel('2031-05')).toBe('Mayo de 2031');
   });
 
   const act = (date: string, status: Activity['status'] = 'pendiente'): Activity => ({
@@ -46,10 +46,18 @@ describe('calendario del mes', () => {
         booking({ id: 'x', category: 'entrada', status: 'cancelada', start: ldt('2030-05-04') }),
       ],
     );
-    expect(markers.get('2030-05-01')).toMatchObject({ flight: true, activities: 0 });
+    expect(markers.get('2030-05-01')).toMatchObject({ flight: true, transit: false, activities: 0 });
     expect(markers.get('2030-05-02')).toMatchObject({ flight: true, activities: 2, lodging: true });
     expect(markers.get('2030-05-03')).toMatchObject({ activities: 0, bookings: 1 });
     expect(markers.get('2030-05-04')).toBeUndefined();
     expect(markers.get('2030-05-05')).toMatchObject({ lodging: true });
+  });
+
+  it('marca los días de tren y no los cuenta como reservas sueltas', () => {
+    const tren = booking({
+      id: 't', category: 'transporte', start: ldt('2030-06-02'),
+      legs: [{ id: 'l', from: 'Tokio', to: 'Kioto', flightNumber: '', car: '', seat: '', fare: '', depart: ldt('2030-06-02'), arrive: ldt('2030-06-02') }],
+    });
+    expect(calendarMarkers([], [tren]).get('2030-06-02')).toMatchObject({ transit: true, bookings: 0 });
   });
 });

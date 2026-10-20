@@ -22,6 +22,9 @@ existen en cada iPhone y en las copias de seguridad que hagas.
 
 - **Viaje (inicio):** nombre, cuenta atrás, día y ciudad actuales, próxima actividad y reserva, accesos
   rápidos, información pendiente, aviso de copia de seguridad y estado sin conexión.
+- **Trenes:** las reservas de «Tren / transporte» se guardan por trayectos (con transbordos): estaciones con buscador,
+  tren o servicio, **tipo de billete** (Suica, asiento reservado, sin reserva, pase), **vagón y asiento**, y horas locales.
+  Con Suica no se pide asiento. El día del tren sale como «Día de traslado» (azul) y «Hoy te mueves de Tokio a Kioto».
 - **Itinerario:** días del viaje con su ciudad; paradas con hora, ubicación, reserva asociada y estado.
   Reordena arrastrando el asa o con las flechas. Avisa de solapes de horario y de datos que faltan.
 - **Reservas:** vuelos, alojamientos, restaurantes, entradas, trenes y otros. Los vuelos admiten escalas (un tramo

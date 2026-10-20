@@ -62,6 +62,22 @@ export const SCHEMA_HISTORY: SchemaVersion[] = [
       });
     },
   },
+  {
+    // v4: trayectos de tren con vagón, asiento y tipo de billete (car, seat, fare en cada tramo).
+    version: 4,
+    stores: {},
+    upgrade: async (tx) => {
+      await tx.table('bookings').toCollection().modify((b: { legs?: Record<string, unknown>[] }) => {
+        if (!Array.isArray(b.legs)) return;
+        b.legs = b.legs.map((l) => ({
+          ...l,
+          car: typeof l.car === 'string' ? l.car : '',
+          seat: typeof l.seat === 'string' ? l.seat : '',
+          fare: typeof l.fare === 'string' ? l.fare : '',
+        }));
+      });
+    },
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = SCHEMA_HISTORY[SCHEMA_HISTORY.length - 1]?.version ?? 1;

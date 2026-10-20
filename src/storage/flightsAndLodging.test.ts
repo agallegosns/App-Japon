@@ -22,7 +22,7 @@ const madDoh: FlightLeg = {
   ...emptyLeg(),
   from: 'Madrid (MAD)',
   to: 'Doha (DOH)',
-  flightNumber: 'qr150',
+  flightNumber: 'qr150', car: '', seat: '', fare: '',
   depart: { date: '2030-05-01', time: '14:00', tz: 'Europe/Madrid' },
   arrive: { date: '2030-05-01', time: '22:30', tz: 'Asia/Qatar' },
 };
@@ -142,7 +142,7 @@ describe('copias antiguas', () => {
     expect(parsed.bookings[0]).toMatchObject({ guests: 2, taxes: [] });
     expect(parsed.days[0]?.lodgingId).toBeNull();
     expect(JSON.stringify(parsed)).not.toContain('SECRETO');
-    expect(CURRENT_SCHEMA_VERSION).toBe(3);
+    expect(CURRENT_SCHEMA_VERSION).toBe(4);
   });
 });
 
@@ -200,5 +200,38 @@ describe('ordenar el día por hora', () => {
     await sortDayByTime(db, date);
     const order = async (id: string) => (await getActivity(db, id))?.order;
     expect([await order(todo.id), await order(desayuno.id), await order(cena.id), await order(sinHora.id)]).toEqual([0, 1, 2, 3]);
+  });
+});
+
+describe('trenes con vagón, asiento y Suica', () => {
+  const tren = (patch: object = {}) => ({
+    ...emptyLeg(), from: ' Tokio ', to: 'Kioto', flightNumber: ' Nozomi 25 ', car: ' 7 ', seat: ' 12a ', fare: 'reservado' as const,
+    depart: { date: '2030-05-05', time: '09:00', tz: 'Asia/Tokyo' }, arrive: { date: '2030-05-05', time: '11:15', tz: 'Asia/Tokyo' }, ...patch,
+  });
+
+  it('guarda los trayectos limpios y toma la salida y la llegada del primer y último trayecto', async () => {
+    db = freshDb();
+    const b = await createBooking(db, { ...emptyBooking('transporte'), name: 'Tokio-Kioto', legs: [tren()] });
+    const read = await getBooking(db, b.id);
+    expect(read?.legs[0]).toMatchObject({ from: 'Tokio', flightNumber: 'Nozomi 25', car: '7', seat: '12A', fare: 'reservado' });
+    expect(read?.start?.time).toBe('09:00');
+    expect(read?.arrival?.time).toBe('11:15');
+  });
+
+  it('con Suica o un transbordo se guardan varios trayectos, y los vuelos no guardan vagón ni asiento', async () => {
+    db = freshDb();
+    const t2 = tren({ id: 'x2', from: 'Kioto', to: 'Nara', fare: 'suica', car: '', seat: '', depart: { date: '2030-05-05', time: '11:30', tz: 'Asia/Tokyo' }, arrive: { date: '2030-05-05', time: '12:15', tz: 'Asia/Tokyo' } });
+    const b = await createBooking(db, { ...emptyBooking('transporte'), name: 'T', legs: [tren(), t2] });
+    expect(b.legs.map((l) => l.fare)).toEqual(['reservado', 'suica']);
+    const v = await createBooking(db, { ...emptyBooking('vuelo'), name: 'V', legs: [tren({ car: '9', seat: '1A', fare: 'reservado' })] });
+    expect(v.legs[0]).toMatchObject({ car: '', seat: '', fare: '' });
+  });
+
+  it('rechaza un trayecto que llega antes de salir o un transbordo imposible', async () => {
+    db = freshDb();
+    const atras = tren({ arrive: { date: '2030-05-05', time: '08:00', tz: 'Asia/Tokyo' } });
+    await expect(createBooking(db, { ...emptyBooking('transporte'), name: 'T', legs: [atras] })).rejects.toBeInstanceOf(ValidationError);
+    const t2 = tren({ id: 'y', depart: { date: '2030-05-05', time: '10:00', tz: 'Asia/Tokyo' } });
+    await expect(createBooking(db, { ...emptyBooking('transporte'), name: 'T', legs: [tren(), t2] })).rejects.toBeInstanceOf(ValidationError);
   });
 });

@@ -1,11 +1,10 @@
-import { Plane, Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { airportFromLabel } from '../../models/airports';
 import { amountToText, counterpart, formatMoney, isConvertible, parseAmount } from '../../models/currency';
 import { newId } from '../../models/id';
 import { nightsBetween, summarizeTaxes, taxTotal, totalIn } from '../../models/taxes';
-import { emptyLeg, formatMinutes, layoverMinutes, routeText } from '../../models/flights';
+import { emptyLeg, routeText } from '../../models/flights';
 import { BOOKING_STATUS_LABEL, CATEGORY_LABEL } from '../../models/labels';
 import { BOOKING_CATEGORIES, BOOKING_STATUSES, DEFAULT_TZ, type BookingCategory, type BookingTax, type FlightLeg, type TaxBasis } from '../../models/types';
 import { createBooking, emptyBooking, getBooking, updateBooking, validateBooking, type BookingInput } from '../../storage/bookings';
@@ -20,7 +19,7 @@ import { Notice } from '../../ui/Notice';
 import { PageHeader } from '../../ui/PageHeader';
 import { RateLine } from '../../ui/Rate';
 import { Segmented } from '../../ui/Segmented';
-import { AirportField } from './AirportField';
+import { LegsEditor } from './LegsEditor';
 import { ErrorState, LoadingState, errorMessage } from '../../ui/States';
 import { useToast } from '../../ui/Toast';
 import { useFxRate } from '../../storage/useFxRate';
@@ -68,7 +67,7 @@ export function BookingFormPage() {
     const c = params.get('cat');
     const cat = BOOKING_CATEGORIES.includes(c as BookingCategory) ? (c as BookingCategory) : 'otro';
     const base = emptyBooking(cat);
-    return cat === 'vuelo' ? { ...base, legs: [emptyLeg()] } : base;
+    return cat === 'vuelo' || cat === 'transporte' ? { ...base, legs: [emptyLeg()] } : base;
   });
   const [priceText, setPriceText] = useState('');
   const [currency, setCurrency] = useState('EUR');
@@ -89,7 +88,7 @@ export function BookingFormPage() {
           void [_i, _s, _c, _u];
           // Vuelo antiguo sin tramos: se convierte en un único tramo con sus fechas.
           const legs: FlightLeg[] =
-            booking.category === 'vuelo' && booking.legs.length === 0
+            (booking.category === 'vuelo' || booking.category === 'transporte') && booking.legs.length === 0
               ? [{ ...emptyLeg(), depart: booking.start, arrive: booking.arrival }]
               : booking.legs;
           setForm({ ...input, legs });
@@ -118,7 +117,7 @@ export function BookingFormPage() {
     }
     const taxes = form.taxes.map((t) => ({ ...t, amount: parseAmount(taxTexts[t.id] ?? String(t.amount)) }));
     const guests = Number(guestsText);
-    const autoName = form.category === 'vuelo' ? routeText(form.legs) : '';
+    const autoName = form.category === 'vuelo' || form.category === 'transporte' ? routeText(form.legs) : '';
     const input: BookingInput = { ...form, name: form.name.trim() || autoName, price, taxes, guests };
     const errs = { ...validateBooking(input), ...priceErrors };
     if (Number.isNaN(guests) && c === 'alojamiento') errs.guests = 'Las personas deben ser un número entre 1 y 30.';
@@ -155,8 +154,6 @@ export function BookingFormPage() {
   const taxSummary = summarizeTaxes(parsedTaxes, Number(guestsText) || 0, nights);
   const taxEur = totalIn(taxSummary.total, 'EUR', rate);
   const taxJpy = totalIn(taxSummary.total, 'JPY', rate);
-  const setLeg = (i: number, patch: Partial<FlightLeg>) =>
-    setForm((f) => ({ ...f, legs: f.legs.map((l, j) => (j === i ? { ...l, ...patch } : l)) }));
 
   return (
     <>
@@ -178,7 +175,7 @@ export function BookingFormPage() {
                       role="radio"
                       aria-checked={c === v}
                       className={`cat-tile${c === v ? ' is-active' : ''}`}
-                      onClick={() => setForm((f) => ({ ...f, category: v, legs: v === 'vuelo' && f.legs.length === 0 ? [emptyLeg()] : f.legs }))}
+                      onClick={() => setForm((f) => ({ ...f, category: v, legs: (v === 'vuelo' || v === 'transporte') && f.legs.length === 0 ? [emptyLeg()] : f.legs }))}
                     >
                       <CategoryIcon category={v} size={24} />
                       <span>{CATEGORY_LABEL[v]}</span>
@@ -191,7 +188,7 @@ export function BookingFormPage() {
                 value={form.name}
                 onChange={(v) => set('name', v)}
                 error={errors.name}
-                placeholder={c === 'vuelo' ? 'Opcional: si lo dejas vacío se usa la ruta' : undefined}
+                placeholder={c === 'vuelo' || c === 'transporte' ? 'Opcional: si lo dejas vacío se usa la ruta' : undefined}
                 autoComplete="off"
               />
               <div className="field">
@@ -206,97 +203,11 @@ export function BookingFormPage() {
             </div>
           </Card>
 
-          {c === 'vuelo' && (
-            <Card title="Tramos del vuelo">
-              <div className="stack">
-                <p className="muted small">
-                  Añade un tramo por cada despegue. Un vuelo con una escala tiene dos tramos. Las horas son siempre las locales del
-                  aeropuerto.
-                </p>
-                {form.legs.map((leg, i) => {
-                  const prev = form.legs[i - 1];
-                  const gap = prev ? layoverMinutes(prev, leg) : null;
-                  return (
-                    <div key={leg.id} className="stack" style={{ paddingBottom: 'var(--sp-3)', borderBottom: '1px solid var(--c-border)' }}>
-                      {prev && (
-                        <p className={gap !== null && gap < 0 ? 'field-error' : 'muted small'}>
-                          Escala en {prev.to || 'la escala'}
-                          {gap !== null ? `: ${formatMinutes(gap)}` : ' (rellena las horas para ver cuánto dura)'}
-                        </p>
-                      )}
-                      <p style={{ fontWeight: 600 }}>
-                        <Plane size={16} aria-hidden="true" style={{ verticalAlign: '-2px' }} /> Tramo {i + 1}
-                      </p>
-                      <AirportField
-                        label={`Tramo ${i + 1}: origen`}
-                        value={leg.from}
-                        onChange={(v, a) =>
-                          setLeg(i, { from: v, ...(a && leg.depart ? { depart: { ...leg.depart, tz: a.tz } } : {}) })
-                        }
-                      />
-                      <AirportField
-                        label={`Tramo ${i + 1}: destino`}
-                        value={leg.to}
-                        onChange={(v, a) =>
-                          setLeg(i, { to: v, ...(a && leg.arrive ? { arrive: { ...leg.arrive, tz: a.tz } } : {}) })
-                        }
-                      />
-                      <TextField
-                        label={`Tramo ${i + 1}: número de vuelo (opcional)`}
-                        value={leg.flightNumber}
-                        onChange={(v) => setLeg(i, { flightNumber: v })}
-                        autoCapitalize="characters"
-                        autoComplete="off"
-                        spellCheck={false}
-                      />
-                      <DateTimeField
-                        label={`Tramo ${i + 1}: salida`}
-                        value={leg.depart}
-                        onChange={(v) => setLeg(i, { depart: v })}
-                        defaultTz={airportFromLabel(leg.from)?.tz ?? prev?.arrive?.tz ?? tripTz}
-                        showTz
-                        hint="Hora local del aeropuerto de origen."
-                        error={errors[`legs.${i}.depart`]}
-                      />
-                      <DateTimeField
-                        label={`Tramo ${i + 1}: llegada`}
-                        value={leg.arrive}
-                        onChange={(v) => setLeg(i, { arrive: v })}
-                        defaultTz={airportFromLabel(leg.to)?.tz ?? tripTz}
-                        showTz
-                        hint="Hora local del aeropuerto de destino."
-                        error={errors[`legs.${i}.arrive`]}
-                      />
-                      {form.legs.length > 1 && (
-                        <Button
-                          variant="ghost"
-                          small
-                          icon={<Trash2 size={16} />}
-                          onClick={() => setForm((f) => ({ ...f, legs: f.legs.filter((_, j) => j !== i) }))}
-                        >
-                          Quitar tramo {i + 1}
-                        </Button>
-                      )}
-                    </div>
-                  );
-                })}
-                <Button
-                  variant="secondary"
-                  icon={<Plus size={18} />}
-                  onClick={() =>
-                    setForm((f) => {
-                      const last = f.legs[f.legs.length - 1];
-                      return { ...f, legs: [...f.legs, { ...emptyLeg(), from: last?.to ?? '' }] };
-                    })
-                  }
-                >
-                  Añadir escala (otro tramo)
-                </Button>
-              </div>
-            </Card>
+          {(c === 'vuelo' || c === 'transporte') && (
+            <LegsEditor kind={c} legs={form.legs} onChange={(legs) => setForm((f) => ({ ...f, legs }))} errors={errors} tripTz={tripTz} />
           )}
 
-          {c !== 'vuelo' && (
+          {c !== 'vuelo' && c !== 'transporte' && (
           <Card title="Fechas">
             <div className="stack">
               {c === 'alojamiento' ? (

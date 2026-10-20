@@ -3,12 +3,12 @@ import { newId } from './id';
 import type { FlightLeg } from './types';
 
 export function emptyLeg(): FlightLeg {
-  return { id: newId(), from: '', to: '', flightNumber: '', depart: null, arrive: null };
+  return { id: newId(), from: '', to: '', flightNumber: '', car: '', seat: '', fare: '', depart: null, arrive: null };
 }
 
 /** true si el tramo no tiene ningún dato escrito. */
 export function isLegBlank(l: FlightLeg): boolean {
-  return !l.from.trim() && !l.to.trim() && !l.flightNumber.trim() && !l.depart && !l.arrive;
+  return !l.from.trim() && !l.to.trim() && !l.flightNumber.trim() && !l.car.trim() && !l.seat.trim() && !l.fare && !l.depart && !l.arrive;
 }
 
 /** Minutos de escala entre la llegada de un tramo y la salida del siguiente (null si faltan horas). */
@@ -38,8 +38,10 @@ export function formatMinutes(total: number): string {
   return min === 0 ? `${sign}${h} h` : `${sign}${h} h ${min} min`;
 }
 
-/** Escalas más cortas que esto se avisan como arriesgadas. */
+/** Escalas de vuelo más cortas que esto se avisan como arriesgadas. */
 export const SHORT_LAYOVER_MIN = 60;
+/** Transbordos de tren más cortos que esto se avisan como arriesgados. */
+export const SHORT_TRANSFER_MIN = 8;
 
 /** Texto corto de la ruta: «Madrid (MAD) → Doha (DOH) → Tokio (HND)». */
 export function routeText(legs: FlightLeg[]): string {
@@ -49,4 +51,11 @@ export function routeText(legs: FlightLeg[]): string {
     if (l.to.trim()) stops.push(l.to.trim());
   });
   return stops.join(' → ');
+}
+
+/** Texto de vagón y asiento: «Vagón 7 · asiento 12A» (vacío si no hay datos). */
+export function seatText(l: Pick<FlightLeg, 'car' | 'seat'>): string {
+  const parts = [l.car.trim() ? `vagón ${l.car.trim()}` : '', l.seat.trim() ? `asiento ${l.seat.trim()}` : ''].filter(Boolean);
+  const text = parts.join(' · ');
+  return text ? text.charAt(0).toUpperCase() + text.slice(1) : '';
 }

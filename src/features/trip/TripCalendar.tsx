@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Plane } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plane, TrainFront } from 'lucide-react';
 import { addMonths, monthGrid, monthLabel, monthOf, type DayMarkers, type YearMonth } from '../../models/calendar';
 import { formatDayLong } from '../../models/datetime';
 import { Button } from '../../ui/Button';
@@ -20,6 +20,7 @@ function describe(date: string, m: DayMarkers | undefined, today: string): strin
   const parts = [formatDayLong(date)];
   if (date === today) parts.push('hoy');
   if (m?.flight) parts.push('día de vuelo');
+  if (m?.transit) parts.push('día de traslado en tren');
   if (m && m.activities > 0) parts.push(`${m.activities} ${m.activities === 1 ? 'actividad' : 'actividades'}`);
   if (m && m.bookings > 0) parts.push(`${m.bookings} ${m.bookings === 1 ? 'reserva' : 'reservas'}`);
   if (m?.lodging) parts.push('cambio de alojamiento');
@@ -68,6 +69,7 @@ export function TripCalendar({ month, onMonthChange, selected, onSelect, today, 
               <span className="cal-num">{Number(date.slice(8))}</span>
               <span className="cal-marks" aria-hidden="true">
                 {m?.flight && <Plane size={11} className="cal-plane" />}
+                {m?.transit && <TrainFront size={11} className="cal-train" />}
                 {m && m.activities > 0 && <i className="cal-dot cal-dot-act" />}
                 {m && m.bookings > 0 && <i className="cal-dot cal-dot-res" />}
                 {m?.lodging && <i className="cal-dot cal-dot-hotel" />}
@@ -79,6 +81,9 @@ export function TripCalendar({ month, onMonthChange, selected, onSelect, today, 
       <div className="cal-foot">
         <span className="cal-legend">
           <Plane size={12} aria-hidden="true" /> Vuelo
+        </span>
+        <span className="cal-legend">
+          <TrainFront size={12} aria-hidden="true" /> Tren
         </span>
         <span className="cal-legend">
           <i className="cal-dot cal-dot-act" /> Actividades

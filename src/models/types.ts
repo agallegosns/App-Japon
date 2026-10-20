@@ -59,7 +59,14 @@ export interface Money {
   currency: string;
 }
 
-/** Un tramo de un vuelo (un vuelo con escalas tiene varios). */
+export const LEG_FARES = ['suica', 'reservado', 'libre', 'pase'] as const;
+/** Tipo de billete de un trayecto en tren: Suica/IC, asiento reservado, sin reserva o con pase. */
+export type LegFare = (typeof LEG_FARES)[number];
+
+/**
+ * Un tramo de un vuelo (un vuelo con escalas tiene varios) o un trayecto en tren/transporte (un viaje con
+ * transbordos tiene varios). En los trenes `flightNumber` es el nombre del servicio (p. ej. «Nozomi 25»).
+ */
 export interface FlightLeg {
   id: string;
   /** Aeropuerto o ciudad de salida, p. ej. «Madrid (MAD)». */
@@ -68,6 +75,12 @@ export interface FlightLeg {
   to: string;
   /** Número de vuelo (opcional). */
   flightNumber: string;
+  /** Vagón (solo trenes). */
+  car: string;
+  /** Asiento (solo trenes). */
+  seat: string;
+  /** Tipo de billete (solo trenes). Vacío = sin indicar. */
+  fare: LegFare | '';
   depart: LocalDateTime | null;
   arrive: LocalDateTime | null;
 }
@@ -98,7 +111,7 @@ export interface Booking {
   checkIn: LocalDateTime | null;
   checkOut: LocalDateTime | null;
   address: string;
-  /** Tramos de un vuelo con escalas. Vacío en el resto de categorías. */
+  /** Tramos de un vuelo con escalas o trayectos de un tren con transbordos. Vacío en el resto de categorías. */
   legs: FlightLeg[];
   price: Money | null;
   /** Personas alojadas (para las tasas por persona y noche). Solo alojamientos. */

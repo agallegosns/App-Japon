@@ -1,4 +1,4 @@
-import { BedDouble, CalendarPlus, ChevronRight, Plane, Ticket } from 'lucide-react';
+import { BedDouble, CalendarPlus, ChevronRight, Plane, Ticket, TrainFront } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { capitalize, formatDayLong } from '../../models/datetime';
 import { dayTimeline, type TimelineEntry } from '../../models/dayEvents';
@@ -6,6 +6,7 @@ import { dayLodging, lodgingChangesOn } from '../../models/lodging';
 import type { AppData } from '../../storage/appData';
 import { LinkButton } from '../../ui/Button';
 import { StatusTag } from '../../ui/StatusTag';
+import { MoveChip } from '../itinerary/DayParts';
 
 function Row({ e }: { e: TimelineEntry }) {
   return (
@@ -13,7 +14,7 @@ function Row({ e }: { e: TimelineEntry }) {
       <Link to={e.to} className={`plan-row kind-${e.kind}${e.done ? ' is-done' : ''}`}>
         <span className={`plan-time${e.allDay ? ' is-allday' : ''}`}>{e.allDay ? 'Todo el día' : (e.time ?? '--:--')}</span>
         <span className="plan-dot" aria-hidden="true">
-          {e.kind === 'flight' ? <Plane size={14} /> : e.kind === 'booking' ? <Ticket size={14} /> : null}
+          {e.kind === 'flight' ? <Plane size={14} /> : e.kind === 'transit' ? <TrainFront size={14} /> : e.kind === 'booking' ? <Ticket size={14} /> : null}
         </span>
         <span className="grow break">
           <strong className="plan-title">{e.title}</strong>
@@ -34,6 +35,8 @@ export function DayAgenda({ date, today, data }: { date: string; today: string; 
   const sleeps = lodging.source === 'manual' ? [lodging.booking] : lodging.source === 'auto' ? lodging.bookings : [];
   const changes = lodgingChangesOn(date, data.bookings);
   const label = date === today ? 'Hoy' : date < today ? 'Pasado' : null;
+  const prevCity = dayNumber > 1 ? data.days[dayNumber - 2]?.city : '';
+  const moving = day?.city && prevCity && day.city !== prevCity;
 
   return (
     <section className="agenda" aria-label={`Agenda del ${formatDayLong(date)}`} key={date}>
@@ -48,8 +51,9 @@ export function DayAgenda({ date, today, data }: { date: string; today: string; 
         {label === 'Hoy' && <span className="plan-day-tag">Hoy</span>}
       </div>
 
-      {(sleeps.length > 0 || changes.checkOut.length > 0 || changes.checkIn.length > 0) && (
+      {(sleeps.length > 0 || changes.checkOut.length > 0 || changes.checkIn.length > 0 || moving) && (
         <div className="row-wrap">
+          {moving && <MoveChip from={prevCity ?? ''} to={day?.city ?? ''} />}
           {sleeps.map((b) => (
             <Link key={b.id} to={`/reservas/${b.id}`} className="chip-link">
               <BedDouble size={16} aria-hidden="true" />

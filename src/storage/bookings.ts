@@ -79,7 +79,7 @@ function validateTaxes(errors: FieldErrors, input: BookingInput): void {
 }
 
 function validateLegs(errors: FieldErrors, input: BookingInput): void {
-  if (input.category !== 'vuelo') return;
+  if (input.category !== 'vuelo' && input.category !== 'transporte') return;
   input.legs.forEach((l, i) => {
     validateLdt(errors, `legs.${i}.depart`, l.depart);
     validateLdt(errors, `legs.${i}.arrive`, l.arrive);
@@ -102,10 +102,18 @@ export function applyLegs(input: BookingInput): BookingInput {
     taxes: input.category === 'alojamiento' ? input.taxes.map((t) => ({ ...t, name: t.name.trim() })) : [],
   };
   input = cleaned;
-  if (input.category !== 'vuelo') return { ...input, legs: [] };
+  if (input.category !== 'vuelo' && input.category !== 'transporte') return { ...input, legs: [] };
   const legs = input.legs
     .filter((l) => !isLegBlank(l))
-    .map((l) => ({ ...l, from: l.from.trim(), to: l.to.trim(), flightNumber: l.flightNumber.trim().toUpperCase() }));
+    .map((l) => ({
+      ...l,
+      from: l.from.trim(),
+      to: l.to.trim(),
+      flightNumber: input.category === 'vuelo' ? l.flightNumber.trim().toUpperCase() : l.flightNumber.trim(),
+      car: input.category === 'transporte' ? l.car.trim() : '',
+      seat: input.category === 'transporte' ? l.seat.trim().toUpperCase() : '',
+      fare: input.category === 'transporte' ? l.fare : '',
+    }));
   if (legs.length === 0) return { ...input, legs: [] };
   const first = legs[0];
   const last = legs[legs.length - 1];

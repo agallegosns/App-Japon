@@ -58,3 +58,31 @@ describe('cotización euro/yen guardada', () => {
     expect(needsRefresh(manualRate(180, now - FX_MAX_AGE_MS * 10), now)).toBe(false);
   });
 });
+
+describe('descarga automática de la cotización', () => {
+  it('una respuesta tardía NO pisa una cotización escrita a mano; el botón «Actualizar» sí', async () => {
+    const { refreshRate, setManualRate, reloadRateFromStorage } = await import('./useFxRate');
+    localStorage.clear();
+    reloadRateFromStorage();
+    let release: () => void = () => undefined;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        await new Promise<void>((r) => {
+          release = r;
+        });
+        return new Response(JSON.stringify({ date: '2030-04-02', rates: { JPY: 171.25 } }), { status: 200 });
+      }),
+    );
+    const auto = refreshRate(false);
+    expect(setManualRate(160)).toBeNull();
+    release();
+    await auto;
+    expect(loadRate()).toMatchObject({ eurToJpy: 160, source: 'manual' });
+
+    const forced = refreshRate(true);
+    release();
+    await forced;
+    expect(loadRate()).toMatchObject({ eurToJpy: 171.25, source: 'bce' });
+  });
+});

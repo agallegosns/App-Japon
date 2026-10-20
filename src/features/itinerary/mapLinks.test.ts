@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { activityDirectionsUrl, bookingDirectionsUrl, directionsUrl } from './mapLinks';
+import { activityDirectionsUrl, bookingDirectionsUrl, directionsUrl, transitRouteUrl } from './mapLinks';
 
 const act = (patch: object) => ({ mapRef: null, location: '', address: '', title: 'Actividad', ...patch });
 
@@ -32,5 +32,23 @@ describe('cómo llegar con Google Maps', () => {
     expect(bookingDirectionsUrl({ category: 'vuelo', name: 'MAD-HND', address: 'x' })).toBeNull();
     expect(bookingDirectionsUrl({ category: 'transporte', name: 'Shinkansen', address: 'Estación de Tokio' })).toBeNull();
     expect(bookingDirectionsUrl({ category: 'otro', name: 'Algo', address: '' })).toBeNull();
+  });
+});
+
+describe('rutas en tren con Google Maps', () => {
+  it('la ruta entre estaciones usa el nombre en inglés de las conocidas', () => {
+    const url = transitRouteUrl('Tokio', 'Kioto')!;
+    expect(url).toContain('origin=Tokyo%20Station');
+    expect(url).toContain('destination=Kyoto%20Station');
+    expect(url.endsWith('travelmode=transit')).toBe(true);
+    expect(decodeURIComponent(transitRouteUrl('Estación rara', 'Kioto')!)).toContain('origin=Estación rara');
+    expect(transitRouteUrl('', 'Kioto')).toBeNull();
+  });
+
+  it('para un tren, «cómo llegar» lleva a la estación de salida del primer trayecto', () => {
+    const leg = { id: 'l', from: 'Shin-Osaka', to: 'Kioto', flightNumber: '', car: '', seat: '', fare: '' as const, depart: null, arrive: null };
+    const url = bookingDirectionsUrl({ category: 'transporte', name: 'Tren', address: '', legs: [leg] })!;
+    expect(decodeURIComponent(url)).toContain('destination=Shin-Osaka Station');
+    expect(bookingDirectionsUrl({ category: 'transporte', name: 'Tren', address: '', legs: [] })).toBeNull();
   });
 });

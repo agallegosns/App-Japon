@@ -168,3 +168,17 @@ seguridad en versiones anteriores. `npm audit` informa de `sharp`/`onnxruntime-n
   (regla global en `global.css`).
 - **Calendario de inicio:** funciones puras en `models/calendar.ts` (cuadrícula lunes–domingo, marcas por día). La selección es
   estado local de la pantalla; al abrir se elige hoy (si es día del viaje) o el primer día con plan.
+
+## Decisiones de la v0.8.0
+
+- **Trenes:** mismo modelo de tramos que los vuelos, con `car`, `seat` y `fare` (esquema v4). La Suica no lleva asiento; el Shinkansen
+  suele necesitar billete aparte. Estaciones en `models/stations.ts` (lista local, no exhaustiva; se puede escribir cualquiera).
+  Google Maps recibe el nombre en inglés de la estación (`stationQuery`) para encontrarla mejor.
+- **Fallo de CI (tests con red real):** en GitHub Actions hay Internet y las descargas automáticas de la cotización podían llegar durante
+  otro test y cambiar los importes. Ahora los tests no tienen red (`setup.ts`) y, en la app, una descarga automática tardía nunca
+  sustituye a una cotización escrita a mano (solo lo hace el botón «Actualizar»).
+- **Seguridad (repositorio público):** auditados archivos e historial: sin claves, correos ni datos personales. La app no tiene secretos
+  porque no usa servicios con clave. CSP en `index.html`: `default-src 'self'`; `connect-src` solo a `api.mymemory.translated.net` y
+  `api.frankfurter.dev`; `script-src 'self' 'wasm-unsafe-eval'` (necesario para el lector de japonés); `object-src 'none'`. GitHub Pages
+  no permite cabeceras HTTP propias, por eso va como `<meta>` (no cubre `frame-ancestors`). Los datos del viaje viven solo en el
+  almacenamiento de cada iPhone y nunca se suben a GitHub.

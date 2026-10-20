@@ -41,8 +41,8 @@ describe('calendario .ics', () => {
     const vuelo = booking({
       id: 'v', category: 'vuelo', name: 'MAD-HND',
       legs: [
-        { id: 'l1', from: 'Madrid (MAD)', to: 'Doha (DOH)', flightNumber: 'QR150', depart: { date: '2030-05-01', time: '14:00', tz: 'Europe/Madrid' }, arrive: { date: '2030-05-01', time: '22:30', tz: 'Asia/Qatar' } },
-        { id: 'l2', from: 'Doha (DOH)', to: 'Tokio (HND)', flightNumber: '', depart: { date: '2030-05-02', time: '01:15', tz: 'Asia/Qatar' }, arrive: { date: '2030-05-02', time: '18:00', tz: 'Asia/Tokyo' } },
+        { id: 'l1', from: 'Madrid (MAD)', to: 'Doha (DOH)', flightNumber: 'QR150', car: '', seat: '', fare: '', depart: { date: '2030-05-01', time: '14:00', tz: 'Europe/Madrid' }, arrive: { date: '2030-05-01', time: '22:30', tz: 'Asia/Qatar' } },
+        { id: 'l2', from: 'Doha (DOH)', to: 'Tokio (HND)', flightNumber: '', car: '', seat: '', fare: '', depart: { date: '2030-05-02', time: '01:15', tz: 'Asia/Qatar' }, arrive: { date: '2030-05-02', time: '18:00', tz: 'Asia/Tokyo' } },
       ],
     });
     const hotel = booking({ checkIn: { date: '2030-05-02', time: '15:00', tz: 'Asia/Tokyo' }, checkOut: { date: '2030-05-05', time: null, tz: 'Asia/Tokyo' } });
@@ -63,5 +63,19 @@ describe('calendario .ics', () => {
     const uids = ics.match(/UID:.*/g) ?? [];
     expect(new Set(uids).size).toBe(uids.length);
     expect(buildIcs([], new Date(0))).toContain('END:VCALENDAR');
+  });
+});
+
+describe('trenes en el calendario', () => {
+  it('cada trayecto es un evento con aviso de 1 hora y vagón y asiento en la descripción', () => {
+    const tren = booking({
+      id: 't', category: 'transporte', name: 'Tokio-Kioto',
+      legs: [{ id: 'l1', from: 'Tokio', to: 'Kioto', flightNumber: 'Nozomi 25', car: '7', seat: '12A', fare: 'reservado', depart: { date: '2030-05-05', time: '09:00', tz: 'Asia/Tokyo' }, arrive: { date: '2030-05-05', time: '11:15', tz: 'Asia/Tokyo' } }],
+    });
+    const [e] = bookingEvents([tren]);
+    expect(e!.summary).toBe('Tren Nozomi 25 Tokio → Kioto');
+    expect(e!.alarmMinutes).toBe(60);
+    expect(e!.description).toBe('Vagón 7 · asiento 12A\nBillete con asiento reservado');
+    expect(utcStamp(e!.start as number)).toBe('20300505T000000Z'); // 09:00 JST = 00:00 UTC
   });
 });

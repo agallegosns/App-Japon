@@ -60,6 +60,13 @@ comprobar en el iPhone, dale los pasos exactos (qué pulsar y qué debería ver)
 - **Tasas de alojamiento** (`Booking.taxes`, `Booking.guests`): importe total o por persona y noche; pagada/por pagar.
 - **Inicio = calendario + agenda del día seleccionado** (`TripCalendar`, `DayAgenda`). El botón ¥ ⇄ € vive en `PageHeader`
   (`QuickConverter`). Animaciones: solo CSS, pocas y cortas (entrada de pantalla, pulsaciones, selección); respetar «reducir movimiento».
+- **Trenes** (`category: 'transporte'`): trayectos en `Booking.legs` (mismo modelo que los vuelos) con `car`, `seat` y `fare`
+  (suica | reservado | libre | pase). Con Suica no hay vagón ni asiento. Estaciones en `src/models/stations.ts`.
+- **Seguridad:** el repositorio es público, así que NUNCA llevará claves, tokens, correos, datos del viaje ni copias de
+  seguridad. La app no usa ninguna clave (MyMemory y Frankfurter no la necesitan). `index.html` lleva una política CSP que solo
+  permite `self` y esos dos servicios: si se añade otro servicio externo, hay que añadirlo ahí y justificarlo.
+- **Tests sin red:** `src/test/setup.ts` sustituye `fetch` en todos los tests; en GitHub Actions hay Internet y una respuesta real
+  rompería los importes esperados. Cada test que necesite `fetch` pone el suyo.
 - **Vocabulario:** en la interfaz se dice «actividad» (nunca «parada»).
 - **Notificaciones:** no hay push (requeriría servidor). Los avisos se hacen exportando un `.ics` al Calendario del
   iPhone (`src/models/ics.ts`, `src/features/settings/calendarActions.ts`). Horas en UTC, sin VTIMEZONE.

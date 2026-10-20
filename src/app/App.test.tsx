@@ -89,11 +89,11 @@ describe('itinerario, día de vuelo y calendario', () => {
       name: 'Madrid → Tokio',
       legs: [
         {
-          id: 'l1', from: 'Madrid (MAD)', to: 'Doha (DOH)', flightNumber: 'QR150',
+          id: 'l1', from: 'Madrid (MAD)', to: 'Doha (DOH)', flightNumber: 'QR150', car: '', seat: '', fare: '',
           depart: { date: '2030-05-01', time: '14:00', tz: 'Europe/Madrid' }, arrive: { date: '2030-05-01', time: '22:30', tz: 'Asia/Qatar' },
         },
         {
-          id: 'l2', from: 'Doha (DOH)', to: 'Tokio (HND)', flightNumber: 'QR812',
+          id: 'l2', from: 'Doha (DOH)', to: 'Tokio (HND)', flightNumber: 'QR812', car: '', seat: '', fare: '',
           depart: { date: '2030-05-02', time: '01:15', tz: 'Asia/Qatar' }, arrive: { date: '2030-05-02', time: '18:00', tz: 'Asia/Tokyo' },
         },
       ],
@@ -236,7 +236,7 @@ describe('yenes y euros', () => {
     await userEvent.type(screen.getByLabelText('Check-out: fecha'), '2030-05-05');
     // 200 ¥ × 2 personas × 3 noches = 1.200 ¥ (7,50 € con 160 ¥/€)
     expect(await screen.findAllByText(/1\.200 ¥/)).not.toHaveLength(0);
-    expect(screen.getAllByText(/7,50 €/).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(/7,50 €/)).length).toBeGreaterThan(0);
   });
 
   it('ya no existe la dirección en japonés', async () => {
@@ -264,5 +264,67 @@ describe('línea de tiempo del día', () => {
     await userEvent.click(sort);
     await waitFor(() => expect(titles()).toEqual(['Desayuno', 'Cena']));
     expect(screen.queryByRole('button', { name: 'Ordenar por hora' })).toBeNull();
+  });
+});
+
+describe('trenes entre ciudades', () => {
+  async function seedTrain() {
+    const db = getDb();
+    const { saveTrip, listDays, setDayCity } = await import('../storage/trips');
+    const { createBooking, emptyBooking } = await import('../storage/bookings');
+    const trip = await saveTrip(db, { name: 'Viaje de prueba', startDate: '2030-05-04', endDate: '2030-05-06', cities: ['Tokio', 'Kioto'], tz: 'Asia/Tokyo' });
+    const days = await listDays(db, trip.id);
+    await setDayCity(db, days[0]!.id, 'Tokio');
+    await setDayCity(db, days[1]!.id, 'Kioto');
+    await createBooking(db, {
+      ...emptyBooking('transporte'),
+      name: 'Tokio → Kioto',
+      legs: [
+        {
+          id: 't1', from: 'Tokio', to: 'Kioto', flightNumber: 'Nozomi 25', car: '7', seat: '12A', fare: 'reservado',
+          depart: { date: '2030-05-05', time: '09:00', tz: 'Asia/Tokyo' }, arrive: { date: '2030-05-05', time: '11:15', tz: 'Asia/Tokyo' },
+        },
+        {
+          id: 't2', from: 'Kioto', to: 'Nara', flightNumber: '', car: '', seat: '', fare: 'suica',
+          depart: { date: '2030-05-05', time: '11:40', tz: 'Asia/Tokyo' }, arrive: { date: '2030-05-05', time: '12:20', tz: 'Asia/Tokyo' },
+        },
+      ],
+    });
+  }
+
+  it('el formulario pide vagón y asiento salvo con Suica', async () => {
+    window.location.hash = '#/reservas/nueva?cat=transporte';
+    render(<App />);
+    const fare = await screen.findByLabelText('Trayecto 1: tipo de billete');
+    expect(screen.getByLabelText('Trayecto 1: origen')).toBeInTheDocument();
+    await userEvent.selectOptions(fare, 'reservado');
+    expect(screen.getByLabelText('Trayecto 1: vagón')).toBeInTheDocument();
+    expect(screen.getByLabelText('Trayecto 1: asiento')).toBeInTheDocument();
+    await userEvent.selectOptions(fare, 'suica');
+    expect(screen.queryByLabelText('Trayecto 1: vagón')).toBeNull();
+    expect(screen.queryByLabelText('Trayecto 1: asiento')).toBeNull();
+  });
+
+  it('el día del tren muestra «Hoy te mueves de Tokio a Kioto» con vagón, asiento y Suica', async () => {
+    await seedTrain();
+    window.location.hash = '#/itinerario?fecha=2030-05-05';
+    render(<App />);
+    const card = await screen.findByRole('region', { name: 'Día de traslado' });
+    expect(within(card).getByText('Hoy te mueves de Tokio a Kioto')).toBeInTheDocument();
+    expect(within(card).getByText('Vagón 7 · asiento 12A')).toBeInTheDocument();
+    expect(within(card).getByText('Con Suica: pasa la tarjeta, sin asiento')).toBeInTheDocument();
+    expect(within(card).getByText('Transbordo en Kioto: 25 min')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /día de traslado en tren/ })).toBeInTheDocument();
+  });
+
+  it('el calendario del inicio marca el día de tren y su agenda lo lista', async () => {
+    await seedTrain();
+    window.location.hash = '#/';
+    render(<App />);
+    await userEvent.click(await screen.findByRole('button', { name: /domingo 5 de mayo.*día de traslado en tren/ }));
+    const agenda = await screen.findByRole('region', { name: /Agenda del domingo 5 de mayo/ });
+    expect(within(agenda).getByText('Nozomi 25: Tokio → Kioto')).toBeInTheDocument();
+    expect(within(agenda).getByText('Vagón 7 · asiento 12A · llega a las 11:15')).toBeInTheDocument();
+    expect(within(agenda).getByText('Con Suica · llega a las 12:20')).toBeInTheDocument();
   });
 });

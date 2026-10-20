@@ -162,7 +162,7 @@ export function parseBackup(bytes: Uint8Array): ParsedBackup {
       void [_c, _j];
       return {
         ...rest,
-        legs: Array.isArray(rest.legs) ? rest.legs : [],
+        legs: (Array.isArray(rest.legs) ? rest.legs : []).map((l) => ({ ...l, car: l.car ?? '', seat: l.seat ?? '', fare: l.fare ?? '' })),
         guests: typeof rest.guests === 'number' ? rest.guests : 2,
         taxes: Array.isArray(rest.taxes) ? rest.taxes : [],
       };

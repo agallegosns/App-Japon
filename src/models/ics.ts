@@ -1,6 +1,7 @@
 import { ldtToEpoch, addDays, zonedToEpoch } from './datetime';
 import { legsOf } from './dayEvents';
-import { routeText } from './flights';
+import { routeText, seatText } from './flights';
+import { FARE_LABEL } from './labels';
 import { CATEGORY_LABEL } from './labels';
 import type { Activity, Booking } from './types';
 
@@ -133,6 +134,21 @@ export function bookingEvents(bookings: Booking[]): IcsEvent[] {
           end,
           description: routeText(legs),
           alarmMinutes: 180,
+        });
+      });
+    } else if (b.category === 'transporte' && b.legs.length > 0) {
+      b.legs.forEach((l, i) => {
+        const start = ldtToEpoch(l.depart);
+        if (start === null || !l.depart?.time) return;
+        const end = l.arrive?.time ? (ldtToEpoch(l.arrive) ?? undefined) : undefined;
+        const route = l.from || l.to ? `${l.from} → ${l.to}` : b.name;
+        out.push({
+          uid: `tren-${b.id}-${i}`,
+          summary: `Tren ${l.flightNumber ? `${l.flightNumber} ` : ''}${route}`.replace(/\s+/g, ' ').trim(),
+          start,
+          end,
+          description: [seatText(l), l.fare ? FARE_LABEL[l.fare] : ''].filter(Boolean).join('\n'),
+          alarmMinutes: 60,
         });
       });
     } else if (b.category === 'alojamiento') {

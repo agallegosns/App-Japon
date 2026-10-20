@@ -132,6 +132,17 @@ iPhone · **[pendiente]** sin hacer · **[bloqueado]** depende de algo externo.
 - [propuesta] Mapa: pendiente de decisión (ver conversación).
 - [propuesta] Transportes (trenes entre ciudades): pendiente de decisión (ver conversación).
 
+## v0.8.0 — Trenes, arreglo de CI y seguridad
+
+- [hecho] Trenes por trayectos con transbordos, estaciones (≈ 50, con kanji), tipo de billete con Suica, vagón y asiento.
+- [hecho] «Día de traslado» en itinerario, calendario e inicio; «Hoy te mueves de A a B»; avisos de transbordo justo y de asiento sin rellenar.
+- [hecho] Calendario del iPhone con los trenes; rutas de Google Maps entre estaciones.
+- [hecho] Arreglo del fallo de GitHub (tests con red real) y protección contra que una descarga tardía pise la cotización manual.
+- [hecho] Auditoría del repositorio público y del historial (14 commits): sin claves, sin correos, sin datos del viaje.
+- [hecho] Política de seguridad CSP en la app (solo código propio y los dos servicios usados). Probada: OCR, PDF, service worker y bloqueo de sitios no permitidos.
+- [dispositivo] Que el buscador de estaciones y los campos de vagón y asiento sean cómodos en el iPhone.
+- [propuesta] Compartir los datos con la pareja (sincronización) y repositorio privado: pendiente de decisión del usuario.
+
 ## Siguientes fases (no empezar sin petición)
 
 - [pendiente] Mapa con conexión (marcadores de actividades y alojamientos, ubicación GPS).

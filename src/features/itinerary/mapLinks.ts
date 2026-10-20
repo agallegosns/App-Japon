@@ -1,3 +1,4 @@
+import { stationQuery } from '../../models/stations';
 import type { Activity, Booking } from '../../models/types';
 
 export type TravelMode = 'transit' | 'walking' | 'driving';
@@ -31,9 +32,27 @@ export function activityDirectionsUrl(a: Pick<Activity, 'mapRef' | 'location' | 
   return directionsUrl({ text }, mode);
 }
 
-/** Ruta hasta un alojamiento, restaurante o entrada (no tiene sentido para vuelos ni trenes). */
-export function bookingDirectionsUrl(b: Pick<Booking, 'category' | 'name' | 'address'>, mode: TravelMode = 'transit'): string | null {
-  if (b.category === 'vuelo' || b.category === 'transporte') return null;
+/** Ruta en Google Maps entre dos estaciones (con horarios de trenes cuando Google los tiene). */
+export function transitRouteUrl(from: string, to: string, mode: TravelMode = 'transit'): string | null {
+  const o = stationQuery(from);
+  const d = stationQuery(to);
+  if (!o || !d) return null;
+  return `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(o)}&destination=${encodeURIComponent(d)}&travelmode=${mode}`;
+}
+
+/**
+ * Ruta hasta un alojamiento, restaurante o entrada; en un tren, hasta la estación de salida del primer trayecto.
+ * No tiene sentido para vuelos.
+ */
+export function bookingDirectionsUrl(
+  b: Pick<Booking, 'category' | 'name' | 'address'> & { legs?: Booking['legs'] },
+  mode: TravelMode = 'transit',
+): string | null {
+  if (b.category === 'vuelo') return null;
+  if (b.category === 'transporte') {
+    const first = b.legs?.find((l) => l.from.trim());
+    return first ? directionsUrl({ text: stationQuery(first.from) }, mode) : null;
+  }
   const text = [b.name, b.address].map((p) => p.trim()).filter(Boolean).join(', ');
   return b.address.trim() || b.category === 'alojamiento' || b.category === 'restaurante' || b.category === 'entrada'
     ? directionsUrl({ text }, mode)

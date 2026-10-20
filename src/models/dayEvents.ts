@@ -1,6 +1,7 @@
 import { ldtToEpoch, zonedToEpoch } from './datetime';
 import { CATEGORY_LABEL } from './labels';
-import { legMinutes } from './flights';
+import { legMinutes, seatText } from './flights';
+import { FARE_LABEL } from './labels';
 import type { Activity, Booking, FlightLeg } from './types';
 
 export interface FlightOnDay {
@@ -17,7 +18,7 @@ export interface FlightOnDay {
 export function legsOf(b: Booking): FlightLeg[] {
   if (b.legs.length > 0) return b.legs;
   if (!b.start && !b.arrival) return [];
-  return [{ id: `${b.id}-0`, from: '', to: '', flightNumber: '', depart: b.start, arrive: b.arrival }];
+  return [{ id: `${b.id}-0`, from: '', to: '', flightNumber: '', car: '', seat: '', fare: '', depart: b.start, arrive: b.arrival }];
 }
 
 /** Vuelos que salen o llegan en `date` (fecha local del aeropuerto). Se ignoran los cancelados. */
@@ -39,6 +40,38 @@ export function flightsOnDate(date: string, bookings: Booking[]): FlightOnDay[] 
   return out.sort((a, b) => (a.booking.sortAt ?? 0) - (b.booking.sortAt ?? 0));
 }
 
+/** Trayectos en tren/transporte que salen o llegan en `date` (misma forma que los vuelos). */
+export function transfersOnDate(date: string, bookings: Booking[]): FlightOnDay[] {
+  const out: FlightOnDay[] = [];
+  for (const booking of bookings) {
+    if (booking.category !== 'transporte' || booking.status === 'cancelada') continue;
+    const all = legsOf(booking);
+    const legs = all.filter((l) => l.depart?.date === date || l.arrive?.date === date);
+    if (legs.length === 0) continue;
+    out.push({
+      booking,
+      legs,
+      allLegs: all,
+      departsToday: legs.some((l) => l.depart?.date === date),
+      arrivesToday: legs.some((l) => l.arrive?.date === date),
+    });
+  }
+  return out.sort((a, b) => (a.booking.sortAt ?? 0) - (b.booking.sortAt ?? 0));
+}
+
+/** Fechas en las que hay algún trayecto en tren/transporte. */
+export function transitDates(bookings: Booking[]): Set<string> {
+  const dates = new Set<string>();
+  for (const b of bookings) {
+    if (b.category !== 'transporte' || b.status === 'cancelada') continue;
+    for (const l of legsOf(b)) {
+      if (l.depart?.date) dates.add(l.depart.date);
+      if (l.arrive?.date) dates.add(l.arrive.date);
+    }
+  }
+  return dates;
+}
+
 /**
  * Reservas de un día que no son vuelos ni alojamientos (restaurantes, entradas, trenes, otros),
  * ordenadas por hora y sin repetir las que ya están enlazadas desde una actividad de ese día.
@@ -50,6 +83,7 @@ export function bookingsOnDate(date: string, bookings: Booking[], activities: Ac
       (b) =>
         b.category !== 'vuelo' &&
         b.category !== 'alojamiento' &&
+        !(b.category === 'transporte' && b.legs.length > 0) &&
         b.status !== 'cancelada' &&
         b.start?.date === date &&
         !linked.has(b.id),
@@ -76,7 +110,7 @@ export function legDuration(l: FlightLeg): number | null {
 
 export interface TimelineEntry {
   id: string;
-  kind: 'flight' | 'activity' | 'booking';
+  kind: 'flight' | 'transit' | 'activity' | 'booking';
   /** Hora local HH:mm o null si no tiene. */
   time: string | null;
   title: string;
@@ -109,6 +143,30 @@ export function dayTimeline(date: string, activities: Activity[], bookings: Book
             ? `Llega a las ${l.arrive.time} (hora local${l.arrive.date !== date ? `, ${l.arrive.date.slice(8)}/${l.arrive.date.slice(5, 7)}` : ''})`
             : 'Vuelo'
           : `Vuelo ${l.flightNumber || f.booking.name}`,
+        to: `/reservas/${f.booking.id}`,
+        done: false,
+        sort: ldtToEpoch(ldt) ?? NO_TIME,
+      });
+    }
+  }
+
+  for (const f of transfersOnDate(date, bookings)) {
+    for (const l of f.legs) {
+      const departs = l.depart?.date === date;
+      const ldt = departs ? l.depart : l.arrive;
+      const route = l.from || l.to ? `${l.from || '?'} → ${l.to || '?'}` : f.booking.name;
+      const bits = [
+        l.fare === 'suica' ? 'Con Suica' : '',
+        seatText(l),
+        l.fare && l.fare !== 'suica' && !seatText(l) ? FARE_LABEL[l.fare] : '',
+        departs && l.arrive?.time ? `llega a las ${l.arrive.time}` : '',
+      ].filter(Boolean);
+      entries.push({
+        id: `${f.booking.id}-${l.id}-${departs ? 'd' : 'a'}`,
+        kind: 'transit',
+        time: ldt?.time ?? null,
+        title: departs ? `${l.flightNumber ? `${l.flightNumber}: ` : 'Tren: '}${route}` : `Llegada a ${l.to || 'la estación'}`,
+        subtitle: bits.join(' · '),
         to: `/reservas/${f.booking.id}`,
         done: false,
         sort: ldtToEpoch(ldt) ?? NO_TIME,

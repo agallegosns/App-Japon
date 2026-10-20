@@ -13,6 +13,7 @@ import {
   Pencil,
   Plane,
   Plus,
+  TrainFront,
   RotateCcw,
   SkipForward,
   Ticket,
@@ -21,7 +22,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { capitalize, formatDateLong, formatDateShort, formatDayLong, formatDayMonth, nowInZone } from '../../models/datetime';
-import { bookingsOnDate, flightDates, flightsOnDate } from '../../models/dayEvents';
+import { bookingsOnDate, flightDates, flightsOnDate, transfersOnDate, transitDates } from '../../models/dayEvents';
 import type { Activity, Booking, Day } from '../../models/types';
 import { activityWarnings, detectOverlaps } from '../../models/warnings';
 import { deleteActivity, moveActivity, setActivityStatus, sortDayByTime } from '../../storage/activities';
@@ -39,7 +40,7 @@ import { EmptyState, ErrorState, LoadingState, errorMessage } from '../../ui/Sta
 import { StatusTag } from '../../ui/StatusTag';
 import { useToast } from '../../ui/Toast';
 import { shareCalendar } from '../settings/calendarActions';
-import { DayBookings, DayHeader, FlightDayCard } from './DayParts';
+import { DayBookings, DayHeader, FlightDayCard, TransferDayCard } from './DayParts';
 import { activityDirectionsUrl } from './mapLinks';
 
 type View = 'dia' | 'lista';
@@ -61,6 +62,7 @@ function Itinerary({ data }: { data: AppData }) {
   const view: View = params.get('vista') === 'lista' ? 'lista' : 'dia';
   const overlaps = useMemo(() => detectOverlaps(data.activities), [data.activities]);
   const flightDays = useMemo(() => flightDates(data.bookings), [data.bookings]);
+  const transitDays = useMemo(() => transitDates(data.bookings), [data.bookings]);
   const bookings = useMemo(() => new Map(data.bookings.map((b) => [b.id, b])), [data.bookings]);
 
   const dates = useMemo(() => {
@@ -110,13 +112,14 @@ function Itinerary({ data }: { data: AppData }) {
       />
       {view === 'dia' ? (
         <>
-          <DayChips dates={dates} days={data.days} selected={selected} flights={flightDays} onSelect={(d) => setParam('fecha', d)} />
+          <DayChips dates={dates} days={data.days} selected={selected} flights={flightDays} transit={transitDays} onSelect={(d) => setParam('fecha', d)} />
           {selected && (
             <DayView
               date={selected}
               day={data.days.find((d) => d.date === selected) ?? null}
               dayNumber={data.days.findIndex((d) => d.date === selected) + 1 || null}
               totalDays={data.days.length}
+              prevCity={data.days[data.days.findIndex((d) => d.date === selected) - 1]?.city || undefined}
               cities={data.trip?.cities ?? []}
               activities={data.activities.filter((a) => a.date === selected)}
               overlaps={overlaps}
@@ -156,7 +159,7 @@ function CalendarButton() {
   );
 }
 
-function DayChips({ dates, days, selected, flights, onSelect }: { dates: string[]; days: Day[]; selected: string | null; flights: Set<string>; onSelect: (d: string) => void }) {
+function DayChips({ dates, days, selected, flights, transit, onSelect }: { dates: string[]; days: Day[]; selected: string | null; flights: Set<string>; transit: Set<string>; onSelect: (d: string) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     ref.current?.querySelector('[aria-pressed="true"]')?.scrollIntoView({ inline: 'center', block: 'nearest' });
@@ -171,12 +174,13 @@ function DayChips({ dates, days, selected, flights, onSelect }: { dates: string[
           <button
             key={date}
             type="button"
-            className={`day-chip${day ? '' : ' is-outside'}${flights.has(date) ? ' has-flight' : ''}`}
+            className={`day-chip${day ? '' : ' is-outside'}${flights.has(date) ? ' has-flight' : ''}${transit.has(date) && !flights.has(date) ? ' has-transit' : ''}`}
             aria-pressed={date === selected}
             onClick={() => onSelect(date)}
-            aria-label={`${formatDateLong(date)}${day?.city ? `, ${day.city}` : ''}${flights.has(date) ? ', día de vuelo' : ''}`}
+            aria-label={`${formatDateLong(date)}${day?.city ? `, ${day.city}` : ''}${flights.has(date) ? ', día de vuelo' : ''}${transit.has(date) ? ', día de traslado en tren' : ''}`}
           >
             {flights.has(date) && <Plane size={14} className="day-chip-plane" aria-hidden="true" />}
+            {transit.has(date) && !flights.has(date) && <TrainFront size={14} className="day-chip-plane" aria-hidden="true" />}
             <span>{day ? `Día ${dayNumber}` : 'Fuera'}</span>
             <strong>{formatDayMonth(date)}</strong>
             <span className="break" style={{ maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -194,10 +198,11 @@ interface ListProps {
   bookings: Map<string, Booking>;
 }
 
-function DayView({ date, day, dayNumber, totalDays, cities, activities, overlaps, bookings, allBookings }: ListProps & { date: string; day: Day | null; dayNumber: number | null; totalDays: number; cities: string[]; activities: Activity[]; allBookings: Booking[] }) {
+function DayView({ date, day, dayNumber, totalDays, cities, prevCity, activities, overlaps, bookings, allBookings }: ListProps & { date: string; day: Day | null; dayNumber: number | null; totalDays: number; cities: string[]; prevCity?: string; activities: Activity[]; allBookings: Booking[] }) {
   const toast = useToast();
   const sorted = [...activities].sort((a, b) => a.order - b.order);
   const flights = flightsOnDate(date, allBookings);
+  const transfers = transfersOnDate(date, allBookings);
   const dayBookings = bookingsOnDate(date, allBookings, activities);
 
   const move = async (id: string, to: number) => {
@@ -217,9 +222,11 @@ function DayView({ date, day, dayNumber, totalDays, cities, activities, overlaps
         dayNumber={dayNumber}
         totalDays={totalDays}
         cities={cities}
+        prevCity={prevCity}
         bookings={allBookings}
       />
       <FlightDayCard flights={flights} />
+      <TransferDayCard transfers={transfers} from={prevCity} to={day?.city} />
       <DayBookings bookings={dayBookings} />
 
       <div className="spread">

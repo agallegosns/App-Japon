@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { bookingsOnDate, dayTimeline, flightDates, flightsOnDate, homeDay, legsOf } from './dayEvents';
+import { bookingsOnDate, dayTimeline, flightDates, flightsOnDate, homeDay, legsOf, transfersOnDate, transitDates } from './dayEvents';
 import type { Activity, Booking, FlightLeg } from './types';
 
 const leg = (from: string, to: string, d: [string, string, string], a: [string, string, string]): FlightLeg => ({
-  id: `${from}${to}`, from, to, flightNumber: '',
+  id: `${from}${to}`, from, to, flightNumber: '', car: '', seat: '', fare: '',
   depart: { date: d[0], time: d[1], tz: d[2] }, arrive: { date: a[0], time: a[1], tz: a[2] },
 });
 function booking(id: string, category: Booking['category'], patch: Partial<Booking> = {}): Booking {
@@ -89,5 +89,37 @@ describe('plan del día', () => {
     expect(homeDay('2030-04-20', days, [], [vuelo])).toBe('2030-05-01');
     expect(homeDay('2030-04-20', days, [], [])).toBeNull();
     expect(homeDay('2030-05-09', days, [act({})], [])).toBeNull();
+  });
+});
+
+describe('trenes entre ciudades', () => {
+  const tren = booking('tren', 'transporte', {
+    legs: [
+      { ...leg('Tokio', 'Kioto', ['2030-05-05', '09:00', 'Asia/Tokyo'], ['2030-05-05', '11:15', 'Asia/Tokyo']), flightNumber: 'Nozomi 25', car: '7', seat: '12A', fare: 'reservado' },
+      { ...leg('Kioto', 'Nara', ['2030-05-05', '11:30', 'Asia/Tokyo'], ['2030-05-05', '12:15', 'Asia/Tokyo']), fare: 'suica' },
+    ],
+  });
+
+  it('marca el día de traslado y no lo mezcla con los vuelos', () => {
+    expect([...transitDates([tren])]).toEqual(['2030-05-05']);
+    expect(transfersOnDate('2030-05-05', [tren])[0]?.legs).toHaveLength(2);
+    expect(transfersOnDate('2030-05-06', [tren])).toEqual([]);
+    expect(flightsOnDate('2030-05-05', [tren])).toEqual([]);
+    expect(flightDates([tren]).size).toBe(0);
+  });
+
+  it('el plan del día enseña el tren con vagón y asiento, y el tramo con Suica sin asiento', () => {
+    const [a, b] = dayTimeline('2030-05-05', [], [tren]);
+    expect(a).toMatchObject({ kind: 'transit', time: '09:00', title: 'Nozomi 25: Tokio → Kioto' });
+    expect(a?.subtitle).toBe('Vagón 7 · asiento 12A · llega a las 11:15');
+    expect(b?.subtitle).toBe('Con Suica · llega a las 12:15');
+    expect(b?.title).toBe('Tren: Kioto → Nara');
+  });
+
+  it('un tren con trayectos no aparece además como reserva suelta del día', () => {
+    const suelto = { ...tren, start: { date: '2030-05-05', time: '09:00', tz: 'Asia/Tokyo' } };
+    expect(bookingsOnDate('2030-05-05', [suelto], [])).toEqual([]);
+    const sinTramos = booking('sinTramos', 'transporte', { start: { date: '2030-05-05', time: '09:00', tz: 'Asia/Tokyo' } });
+    expect(bookingsOnDate('2030-05-05', [sinTramos], []).map((b) => b.id)).toEqual(['sinTramos']);
   });
 });
