@@ -1,4 +1,5 @@
 import { isValidDate, isValidTime, isValidTimeZone, timeToMinutes } from '../models/datetime';
+import { compareByTime } from '../models/activitySort';
 import { newId } from '../models/id';
 import { ACTIVITY_STATUSES, DEFAULT_TZ, type Activity, type ActivityStatus } from '../models/types';
 import type { NihonDB } from './db';
@@ -159,4 +160,13 @@ export async function listActivitiesByDate(db: NihonDB, date: string): Promise<A
 export async function listActivities(db: NihonDB): Promise<Activity[]> {
   const all = await db.activities.toArray();
   return all.sort((a, b) => a.date.localeCompare(b.date) || a.order - b.order);
+}
+
+/** Reordena las actividades de un día por hora (todo el día primero, sin hora al final). */
+export async function sortDayByTime(db: NihonDB, date: string): Promise<void> {
+  await db.transaction('rw', db.activities, db.meta, async () => {
+    const list = (await dayList(db, date)).sort(compareByTime);
+    await writeOrder(db, list);
+    await recordChange(db);
+  });
 }

@@ -1050,3 +1050,138 @@
 .quick-link svg {
   padding: 7px;
 }
+
+/* =====================================================================
+   v0.6.1: actividades como línea de tiempo compacta
+   ===================================================================== */
+.timeline-card {
+  padding: var(--sp-1) var(--sp-3);
+  border: 1px solid #ebe5da;
+  border-radius: var(--r-lg);
+  background: var(--c-surface);
+  box-shadow: 0 1px 2px rgba(34, 33, 31, 0.04), 0 6px 18px rgba(34, 33, 31, 0.05);
+}
+.timeline-card .reorder-list {
+  gap: 0;
+}
+.timeline-card .reorder-item {
+  overflow: hidden;
+}
+.timeline-card .reorder-item.is-dragging {
+  overflow: visible;
+  background: var(--c-surface);
+  box-shadow: var(--shadow-2);
+  border-radius: var(--r-md);
+}
+.app .timeline-card .card.activity-card {
+  padding: var(--sp-2) 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.timeline-card .reorder-item + .reorder-item .activity-card,
+.timeline-card li + li .activity-card {
+  border-top: 1px solid var(--c-border);
+}
+.timeline-card .act-row {
+  align-items: flex-start;
+  gap: var(--sp-2);
+}
+.timeline-card .drag-handle {
+  width: 20px;
+  min-height: 40px;
+  margin-left: -8px;
+  opacity: 0.45;
+}
+.timeline-card .act-time {
+  width: 3rem;
+  padding-top: 8px;
+}
+.timeline-card .act-time strong {
+  font-size: var(--fs-md);
+}
+.timeline-card .act-time span {
+  font-size: 0.6875rem;
+}
+.timeline-card .allday-pill {
+  font-size: 0.625rem;
+  padding: 2px 6px;
+}
+
+/* Punto y línea que unen las actividades */
+.act-dot {
+  position: relative;
+  flex: none;
+  width: 12px;
+  height: 12px;
+  margin-top: 13px;
+  border-radius: 50%;
+  background: var(--c-accent);
+  box-shadow: 0 0 0 3px var(--c-accent-soft);
+}
+.status-hecha .act-dot {
+  background: var(--c-success);
+  box-shadow: 0 0 0 3px var(--c-success-soft);
+}
+.status-omitida .act-dot {
+  background: var(--c-border-strong);
+  box-shadow: 0 0 0 3px var(--c-surface-2);
+}
+.act-dot::before,
+.act-dot::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--c-border);
+}
+.act-dot::before {
+  bottom: 12px;
+  height: 200px;
+}
+.act-dot::after {
+  top: 12px;
+  height: 200px;
+}
+.timeline-card li:first-child .act-dot::before,
+.timeline-card .reorder-item:first-child .act-dot::before,
+.timeline-card li:last-child .act-dot::after {
+  display: none;
+}
+
+/* Contenido más pequeño */
+.timeline-card .act-main {
+  min-height: 40px;
+  gap: 1px;
+}
+.timeline-card .activity-title {
+  font-size: 0.9375rem;
+  line-height: 1.25;
+}
+.timeline-card .act-loc {
+  font-size: 0.8125rem;
+}
+.timeline-card .act-chips {
+  gap: 6px;
+}
+.timeline-card .chip-action {
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 0.75rem;
+}
+.timeline-card .act-check {
+  width: 36px;
+  height: 36px;
+  margin-top: 2px;
+  border-width: 2px;
+}
+.timeline-card .act-check svg {
+  width: 18px;
+  height: 18px;
+}
+.timeline-card .act-chips .tag {
+  white-space: normal;
+  text-align: left;
+}

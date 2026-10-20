@@ -115,6 +115,13 @@ iPhone · **[pendiente]** sin hacer · **[bloqueado]** depende de algo externo.
 - [dispositivo] Actualización real de la cotización con conexión (no se pudo probar contra Frankfurter desde el entorno de desarrollo).
 - [pendiente] Borrar a mano `src/features/bookings/JapaneseAddressView.tsx` del repositorio (ya no se usa; GitHub no deja borrar al subir).
 
+## v0.6.1 — Actividades en línea de tiempo
+
+- [hecho] Las actividades de cada día se muestran como una línea de tiempo compacta en una sola tarjeta (hora, punto y línea,
+  título y lugar en pequeño, círculo para marcar como hecha) en lugar de una tarjeta grande por actividad.
+- [hecho] Botón «Ordenar por hora» cuando las actividades no están en orden cronológico (el orden manual se respeta mientras no se pulse).
+- [dispositivo] Arrastrar con el dedo en la línea de tiempo y que el botón de hecho sea cómodo de pulsar.
+
 ## Siguientes fases (no empezar sin petición)
 
 - [pendiente] Mapa con conexión (marcadores de actividades y alojamientos, ubicación GPS).

@@ -205,3 +205,22 @@ describe('yenes y euros', () => {
     expect(screen.queryByText(/japonés/i)).toBeNull();
   });
 });
+
+describe('línea de tiempo del día', () => {
+  it('ofrece ordenar por hora cuando las actividades están desordenadas y lo hace', async () => {
+    const db = getDb();
+    const { saveTrip } = await import('../storage/trips');
+    const { createActivity, emptyActivity } = await import('../storage/activities');
+    await saveTrip(db, { name: 'Viaje', startDate: '2030-05-01', endDate: '2030-05-02', cities: ['Tokio'], tz: 'Asia/Tokyo' });
+    await createActivity(db, { ...emptyActivity('2030-05-01'), title: 'Cena', startTime: '20:00' });
+    await createActivity(db, { ...emptyActivity('2030-05-01'), title: 'Desayuno', startTime: '08:00' });
+    window.location.hash = '#/itinerario?fecha=2030-05-01';
+    render(<App />);
+    const sort = await screen.findByRole('button', { name: 'Ordenar por hora' });
+    const titles = () => screen.getAllByRole('article').map((a) => a.getAttribute('aria-label'));
+    expect(titles()).toEqual(['Cena', 'Desayuno']);
+    await userEvent.click(sort);
+    await waitFor(() => expect(titles()).toEqual(['Desayuno', 'Cena']));
+    expect(screen.queryByRole('button', { name: 'Ordenar por hora' })).toBeNull();
+  });
+});

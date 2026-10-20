@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   ArrowDown,
+  ArrowDownUp,
   ArrowUp,
   CalendarDays,
   CalendarPlus,
@@ -23,7 +24,8 @@ import { capitalize, formatDateLong, formatDateShort, formatDayLong, formatDayMo
 import { bookingsOnDate, flightDates, flightsOnDate } from '../../models/dayEvents';
 import type { Activity, Booking, Day } from '../../models/types';
 import { activityWarnings, detectOverlaps } from '../../models/warnings';
-import { deleteActivity, moveActivity, setActivityStatus } from '../../storage/activities';
+import { deleteActivity, moveActivity, setActivityStatus, sortDayByTime } from '../../storage/activities';
+import { isChronological } from '../../models/activitySort';
 import { useAppData, type AppData } from '../../storage/appData';
 import { getDb } from '../../storage/db';
 import { BottomSheet } from '../../ui/BottomSheet';
@@ -220,12 +222,25 @@ function DayView({ date, day, dayNumber, totalDays, cities, activities, overlaps
       <FlightDayCard flights={flights} />
       <DayBookings bookings={dayBookings} />
 
-      <h3 className="section-title">Actividades del día</h3>
+      <div className="spread">
+        <h3 className="section-title">Actividades del día</h3>
+        {sorted.length > 1 && !isChronological(sorted) && (
+          <Button
+            small
+            variant="secondary"
+            icon={<ArrowDownUp size={16} />}
+            onClick={() => sortDayByTime(getDb(), date).catch((e: unknown) => toast.error(errorMessage(e)))}
+          >
+            Ordenar por hora
+          </Button>
+        )}
+      </div>
       {sorted.length === 0 ? (
         <EmptyState icon={<MapPin size={26} />} title="Aún no hay actividades este día">
           Una actividad es algo que haréis ese día: una visita, una comida o un traslado. Añádela con su hora y su lugar.
         </EmptyState>
       ) : (
+        <div className="timeline-card">
         <ReorderList
           label={`Actividades del ${formatDateShort(date)}`}
           items={sorted}
@@ -242,6 +257,7 @@ function DayView({ date, day, dayNumber, totalDays, cities, activities, overlaps
             />
           )}
         />
+        </div>
       )}
       <LinkButton to={`/itinerario/nueva?fecha=${date}`} variant="primary" block icon={<Plus size={20} />}>
         Añadir actividad
@@ -265,9 +281,9 @@ function ChronoList({ activities, overlaps, bookings }: ListProps & { activities
       {[...groups.entries()].map(([date, list]) => (
         <section key={date} className="stack" aria-label={formatDateLong(date)}>
           <h2 className="section-title">{formatDateLong(date)}</h2>
-          <ul className="reorder-list">
+          <ul className="reorder-list timeline-card">
             {list.map((a) => (
-              <li key={a.id}>
+              <li key={a.id} className="reorder-item">
                 <ActivityCard
                   activity={a}
                   overlapsWith={(overlaps.get(a.id) ?? []).map((id) => activities.find((x) => x.id === id)?.title ?? '')}
@@ -336,6 +352,7 @@ function ActivityCard({ activity: a, overlapsWith, booking, index, total, handle
             </>
           )}
         </div>
+        <span className="act-dot" aria-hidden="true" />
         <div className="act-body">
           <button type="button" className="act-main" onClick={() => setMenu(true)} aria-label={`Opciones de «${a.title}»`}>
             <span className="activity-title break">{a.title}</span>

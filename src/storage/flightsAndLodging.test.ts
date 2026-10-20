@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { emptyLeg } from '../models/flights';
 import { bookingWarnings } from '../models/warnings';
 import { BACKUP_FORMAT, BACKUP_FORMAT_VERSION, parseBackup } from './backup';
-import { createActivity, emptyActivity, getActivity } from './activities';
+import { createActivity, emptyActivity, getActivity, sortDayByTime } from './activities';
 import { createBooking, deleteBooking, emptyBooking, getBooking, updateBooking } from './bookings';
 import type { NihonDB } from './db';
 import { CURRENT_SCHEMA_VERSION } from './schema';
@@ -186,5 +186,19 @@ describe('actividades de todo el día', () => {
     db = freshDb();
     const a = await createActivity(db, { ...emptyActivity('2030-05-02'), title: 'Cena', startTime: '20:00', endTime: '21:30' });
     expect(await getActivity(db, a.id)).toMatchObject({ allDay: false, startTime: '20:00', endTime: '21:30' });
+  });
+});
+
+describe('ordenar el día por hora', () => {
+  it('reordena las actividades: todo el día, por hora y sin hora al final', async () => {
+    db = freshDb();
+    const date = '2030-05-02';
+    const cena = await createActivity(db, { ...emptyActivity(date), title: 'Cena', startTime: '20:00' });
+    const sinHora = await createActivity(db, { ...emptyActivity(date), title: 'Pasear' });
+    const desayuno = await createActivity(db, { ...emptyActivity(date), title: 'Desayuno', startTime: '08:00' });
+    const todo = await createActivity(db, { ...emptyActivity(date), title: 'Nikko', allDay: true });
+    await sortDayByTime(db, date);
+    const order = async (id: string) => (await getActivity(db, id))?.order;
+    expect([await order(todo.id), await order(desayuno.id), await order(cena.id), await order(sinHora.id)]).toEqual([0, 1, 2, 3]);
   });
 });
