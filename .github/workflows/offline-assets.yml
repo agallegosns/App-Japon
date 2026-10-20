@@ -84,8 +84,9 @@ jobs:
           test -f "$out/tokenizer.json"
           test -f "$out/onnx/encoder_model_quantized.onnx"
           test -f "$out/onnx/decoder_model_merged_quantized.onnx"
+          rm -f "$out"/onnx/decoder_model_quantized.onnx "$out"/onnx/decoder_with_past_model_quantized.onnx
           ls -l "$out" "$out/onnx"
-          find "$out" -type f -size +95M -print -exec false {} +
+          du -sh "$out"
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -114,6 +115,14 @@ jobs:
           }
           JS
           node verify.mjs
+      - name: Comprobar el límite de GitHub Pages (100 MB por archivo)
+        run: |
+          big=$(find opus-mt-ja-es -type f -size +95M)
+          if [ -n "$big" ]; then
+            echo "::error::El modelo traduce, pero estos archivos superan 95 MB y GitHub Pages no puede servirlos:"
+            ls -l $big
+            exit 1
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: model
