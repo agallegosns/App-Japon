@@ -1,4 +1,5 @@
 import {
+  CalendarPlus,
   ChevronRight,
   CloudDownload,
   Download,
@@ -30,11 +31,13 @@ import { errorMessage } from '../../ui/States';
 import { StatusTag } from '../../ui/StatusTag';
 import { useToast } from '../../ui/Toast';
 import { exportAndShare } from './backupActions';
+import { shareCalendar } from './calendarActions';
 
 export function SettingsPage() {
   return (
     <>
       <PageHeader title="Ajustes" back="/" />
+      <CalendarCard />
       <BackupCard />
       <ImportCard />
       <StorageCard />
@@ -59,6 +62,45 @@ export function SettingsPage() {
       <AppCard />
       <DangerCard />
     </>
+  );
+}
+
+function CalendarCard() {
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  return (
+    <Card title="Avisos en el iPhone">
+      <div className="stack">
+        <p className="small">
+          La app no puede enviar notificaciones por sí sola (haría falta un servidor, y los datos del viaje no salen del móvil). Lo que sí
+          puedes hacer es pasar el itinerario y las reservas al Calendario del iPhone, que avisa solo, también sin conexión: 30 minutos antes de
+          cada actividad, 1 hora antes de check-in, check-out y reservas, y 3 horas antes de cada vuelo.
+        </p>
+        <p className="muted small">
+          Al pulsar, elige «Calendario» en la hoja de compartir y confirma «Añadir todo». Si cambias el itinerario, repite el paso: los
+          eventos se actualizan sin duplicarse.
+        </p>
+        <Button
+          variant="primary"
+          block
+          icon={<CalendarPlus size={18} />}
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              const r = await shareCalendar();
+              if (r.outcome !== 'cancelled') toast.show(`Calendario preparado: ${r.count} eventos con aviso`);
+            } catch (e) {
+              toast.error(errorMessage(e));
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          Añadir al Calendario del iPhone
+        </Button>
+      </div>
+    </Card>
   );
 }
 

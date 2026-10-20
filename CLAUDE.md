@@ -50,6 +50,12 @@ comprobar en el iPhone, dale los pasos exactos (qué pulsar y qué debería ver)
 - **Alojamiento por día:** se deduce de check-in/check-out (`src/models/lodging.ts`) y se puede fijar a mano
   (`Day.lodgingId`). Varios destinos en una misma ciudad se modelan como ciudades distintas del viaje.
 
+- **Vocabulario:** en la interfaz se dice «actividad» (nunca «parada»).
+- **Notificaciones:** no hay push (requeriría servidor). Los avisos se hacen exportando un `.ics` al Calendario del
+  iPhone (`src/models/ics.ts`, `src/features/settings/calendarActions.ts`). Horas en UTC, sin VTIMEZONE.
+- **Días de vuelo** (`src/models/dayEvents.ts`): se marcan en el selector de días y muestran el bloque «Día de vuelo».
+  El inicio muestra el plan del día (`dayTimeline`/`homeDay`), no la «próxima actividad».
+
 ## Reglas de durabilidad (la app debe funcionar sin fallos 7 meses y todo el viaje)
 
 - **Nada que caduque:** sin workflows programados (`schedule`/cron). El despliegue solo ocurre con push a `main`.

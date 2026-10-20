@@ -1,7 +1,6 @@
 import {
   AlertTriangle,
   BedDouble,
-  CalendarPlus,
   ChevronRight,
   CloudDownload,
   Compass,
@@ -16,7 +15,7 @@ import {
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useOnline } from '../../app/useConnectivity';
-import { capitalize, formatDateLong, formatDateRange, formatDateShort, formatLdt } from '../../models/datetime';
+import { capitalize, formatDateRange, formatDayLong, formatLdt } from '../../models/datetime';
 import { CATEGORY_LABEL } from '../../models/labels';
 import { hasAnyData, useAppData, type AppData } from '../../storage/appData';
 import { backupReminder } from '../../storage/meta';
@@ -27,8 +26,9 @@ import { Notice } from '../../ui/Notice';
 import { PageHeader } from '../../ui/PageHeader';
 import { EmptyState, ErrorState, LoadingState } from '../../ui/States';
 import { StatusTag } from '../../ui/StatusTag';
+import { DayPlan } from './DayPlan';
 import { pendingInfo } from './pendingInfo';
-import { currentDay, nextActivity, nextBooking, tripPhase } from './tripStatus';
+import { currentDay, nextBooking, tripPhase } from './tripStatus';
 
 export function TripHomePage() {
   const result = useAppData();
@@ -72,33 +72,7 @@ function TripHome({ data }: { data: AppData }) {
 
       <QuickLinks />
 
-      <Card title="Próxima actividad">
-        {(() => {
-          const a = nextActivity(data.activities, now);
-          if (!a)
-            return (
-              <div className="stack">
-                <p className="muted">No hay actividades pendientes con fecha.</p>
-                <LinkButton to="/itinerario/nueva" variant="secondary" icon={<CalendarPlus size={18} />}>
-                  Añadir actividad
-                </LinkButton>
-              </div>
-            );
-          return (
-            <Link to={`/itinerario?fecha=${a.date}`} className="card-link-row">
-              <div className="grow">
-                <p className="card-title">{a.title}</p>
-                <p className="muted small">
-                  {formatDateShort(a.date)}
-                  {a.startTime ? `, ${a.startTime}` : ''}
-                  {a.location ? ` · ${a.location}` : ''}
-                </p>
-              </div>
-              <ChevronRight size={20} aria-hidden="true" />
-            </Link>
-          );
-        })()}
-      </Card>
+      <DayPlan data={data} trip={data.trip} />
 
       <Card title="Próxima reserva">
         {(() => {
@@ -172,34 +146,35 @@ function TripSummary({ data, now }: { data: AppData; now: number }) {
   const phase = tripPhase(trip, now);
   const today = phase.phase === 'during' ? currentDay(data.days, trip, now) : null;
   return (
-    <Card
-      title={trip.name}
-      action={<LinkButton to="/viaje/editar" variant="ghost" small icon={<Pencil size={18} />} label="Editar viaje" />}
-    >
-      <p className="muted small">
-        {formatDateRange(trip.startDate, trip.endDate)}
-        {trip.cities.length > 0 && ` · ${trip.cities.join(', ')}`}
-      </p>
-      <div style={{ marginTop: 'var(--sp-4)' }}>
-        {phase.phase === 'before' && (
-          <p>
-            <span style={{ fontSize: 'var(--fs-3xl)', fontWeight: 700, color: 'var(--c-accent)' }}>{phase.daysLeft}</span>{' '}
-            <span className="muted">{phase.daysLeft === 1 ? 'día para salir' : 'días para salir'}</span>
+    <section className="hero" aria-label="Resumen del viaje">
+      <div className="hero-top">
+        <div className="grow">
+          <p className="hero-kicker">
+            {formatDateRange(trip.startDate, trip.endDate)}
+            {trip.cities.length > 0 && ` · ${trip.cities.join(', ')}`}
           </p>
-        )}
-        {phase.phase === 'during' && (
-          <div className="stack" style={{ gap: 'var(--sp-1)' }}>
-            <p style={{ fontSize: 'var(--fs-xl)', fontWeight: 700 }}>
-              Día {phase.dayNumber} de {phase.totalDays}
-            </p>
-            <p className="muted">
-              {capitalize(formatDateLong(phase.today))} · {today?.city ? today.city : 'ciudad sin asignar'}
-            </p>
-          </div>
-        )}
-        {phase.phase === 'after' && <p className="muted">El viaje ha terminado.</p>}
+          <h2 className="hero-title">{trip.name}</h2>
+        </div>
+        <LinkButton to="/viaje/editar" variant="ghost" small icon={<Pencil size={18} />} label="Editar viaje" className="hero-edit" />
       </div>
-    </Card>
+      {phase.phase === 'before' && (
+        <p className="hero-count">
+          <span className="hero-number">{phase.daysLeft}</span>
+          <span>{phase.daysLeft === 1 ? 'día para salir' : 'días para salir'}</span>
+        </p>
+      )}
+      {phase.phase === 'during' && (
+        <p className="hero-count">
+          <span className="hero-number">Día {phase.dayNumber}</span>
+          <span>
+            de {phase.totalDays} · {capitalize(formatDayLong(phase.today))}
+            {' · '}
+            {today?.city ? today.city : 'ciudad sin asignar'}
+          </span>
+        </p>
+      )}
+      {phase.phase === 'after' && <p className="hero-count"><span>El viaje ha terminado.</span></p>}
+    </section>
   );
 }
 

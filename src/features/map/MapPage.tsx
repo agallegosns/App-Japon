@@ -9,7 +9,7 @@ export function MapPage() {
       <PageHeader title="Mapa" />
       <OnlineGate feature="El mapa">
         <EmptyState icon={<Map size={26} />} title="Mapa en desarrollo">
-          El mapa necesitará conexión a Internet. Mientras tanto, las paradas del itinerario con coordenadas o enlace se pueden abrir en Mapas
+          El mapa necesitará conexión a Internet. Mientras tanto, las actividades del itinerario con coordenadas o enlace se pueden abrir en Mapas
           de Apple desde su menú.
         </EmptyState>
       </OnlineGate>

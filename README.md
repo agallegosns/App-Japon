@@ -28,11 +28,17 @@ existen en cada iPhone y en las copias de seguridad que hagas.
   por despegue) con buscador de aeropuertos y cálculo de la duración de cada escala. Adjunta PDF o capturas y
   ábrelos a pantalla completa. «Mostrar dirección en japonés» la enseña en letra muy grande. Por seguridad no
   hay campo de localizador ni de códigos QR.
-- **Itinerario:** cada día muestra el alojamiento de esa noche (por check-in/check-out o elegido a mano) y los
-  avisos de check-in/check-out.
+- **Itinerario:** cada día tiene una cabecera con el número de día, la ciudad y dónde duermes (por check-in/check-out o
+  elegido a mano). Los días con vuelo se marcan en rojo con un avión y muestran un bloque «Día de vuelo» con ruta,
+  horas locales y escalas. Una **actividad** es algo que hacéis ese día (visita, comida, traslado), con hora y lugar.
+  Las reservas del día (restaurantes, entradas, trenes) salen aparte. Botón del calendario arriba a la derecha.
+- **Inicio:** tarjeta del viaje con cuenta atrás y el **itinerario de hoy** (o del próximo día con plan).
 - **Traductor:** cámara japonés → español. Necesita Internet (la foto no sale del móvil; solo el texto reconocido
   se envía a MyMemory, límite gratuito ≈ 5 000 caracteres/día).
 - **Mapa:** en desarrollo; necesitará Internet.
+- **Avisos:** Ajustes → «Avisos en el iPhone» pasa el itinerario y las reservas al Calendario del iPhone con avisos
+  (30 min antes de cada actividad, 1 h antes de check-in/out y reservas, 3 h antes de cada vuelo). Funciona sin
+  conexión. No hay notificaciones push (requieren un servidor).
 - **Ajustes:** copia de seguridad, importar copia, almacenamiento, actualizaciones, Laboratorio y borrado.
 
 ### Copias de seguridad

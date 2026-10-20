@@ -133,3 +133,16 @@ seguridad en versiones anteriores. `npm audit` informa de `sharp`/`onnxruntime-n
   bloques que no se solapan. Se descartan párrafos con menos de 25 % de confianza y caracteres sueltos dudosos. Si no se
   encuentra nada, la pantalla enseña lo único que se leyó para poder diagnosticar. Coste: varios segundos por foto
   en el móvil (sin medir en iPhone).
+
+## Decisiones de la v0.5.0
+
+- **Notificaciones:** iOS permite notificaciones push en PWA instaladas (16.4+), pero exigen un servidor que las envíe;
+  no hay API de notificaciones programadas en local en Safari. Alternativa adoptada: exportar `.ics` con `VALARM`
+  (el Calendario del iPhone avisa sin conexión). UID estables (`act-<id>@nihon-trip`) para que reimportar actualice
+  los eventos sin duplicarlos. Horas en UTC (el Calendario las muestra en la zona del teléfono).
+- **Traductor «como Google Lens»:** no existe API de Google Lens. Opciones reales: (a) Google Cloud Vision + Translation
+  con clave propia (cuota gratuita mensual, requiere cuenta con tarjeta; la clave debe guardarse solo en el móvil,
+  nunca en el repositorio público, y restringirse a la dirección de la app y a esas dos APIs); (b) la cámara de iOS
+  / app Traducir de Apple o Google Lens, que ya son precisas y gratis. Sin decisión del usuario, se mantiene
+  Tesseract + MyMemory.
+- **Días de vuelo y plan del día** son funciones puras (`dayEvents.ts`) para poder probarlas sin interfaz.

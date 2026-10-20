@@ -157,6 +157,14 @@ export function formatDateLong(date: string): string {
   return isValidDate(date) ? longDate.format(dateToUtcNoon(date)) : 'Sin fecha';
 }
 
+/** «martes 20 de octubre» (sin año), para títulos. */
+export function formatDayLong(date: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+  if (!m) return date;
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12));
+  return new Intl.DateTimeFormat('es-ES', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }).format(d).replace(',', '');
+}
+
 export function formatDateShort(date: string): string {
   return isValidDate(date) ? shortDate.format(dateToUtcNoon(date)) : 'Sin fecha';
 }

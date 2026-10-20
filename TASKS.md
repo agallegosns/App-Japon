@@ -86,6 +86,21 @@ iPhone · **[pendiente]** sin hacer · **[bloqueado]** depende de algo externo.
   la lectura sigue siendo imperfecta con fotos borrosas o muy inclinadas (límite de Tesseract).
 - [pendiente] Borrar a mano `src/features/lab/TranslationLab.tsx` y `translation.worker.ts` (están vacíos a propósito).
 
+## v0.5.0 — Diseño, itinerario y avisos
+
+- [hecho] Itinerario rediseñado: cabecera compacta del día, actividades como línea de tiempo con la hora a la izquierda,
+  alojamiento de la noche en un chip; «parada» pasa a «actividad» con una explicación en el estado vacío.
+- [hecho] Días de vuelo diferenciados: chip rojo con avión en el selector y bloque «Día de vuelo» (ruta, horas locales, escalas).
+- [hecho] Reservas del día (restaurantes, entradas, trenes) en el itinerario sin repetir las enlazadas desde una actividad.
+- [hecho] Inicio: el itinerario de hoy (o del próximo día con plan) sustituye a «Próxima actividad»; tarjeta del viaje renovada.
+- [hecho] Pulido general: tarjetas, títulos, accesos rápidos, barra inferior.
+- [hecho] Avisos: exportación al Calendario del iPhone (.ics) con alarmas. Probado: formato, zonas horarias, escapes.
+- [dispositivo] Que la hoja de compartir abra «Calendario» con el .ics y añada los eventos con sus avisos.
+- [dispositivo] Revisar el aspecto del rediseño en el iPhone (tamaños, selector de ciudad, texto largo).
+- [bloqueado] Notificaciones push reales: requieren un servidor de envío; descartado por la regla de no usar backend.
+- [pendiente] Traductor más preciso con Google Cloud (Vision + Translation) usando una clave del usuario guardada solo
+  en el móvil: pendiente de que el usuario decida si crea la cuenta (requiere tarjeta; cuota gratuita mensual).
+
 ## Siguientes fases (no empezar sin petición)
 
 - [pendiente] Mapa con conexión (marcadores de actividades y alojamientos, ubicación GPS).

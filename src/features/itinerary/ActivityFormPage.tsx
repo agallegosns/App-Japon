@@ -100,7 +100,7 @@ export function ActivityFormPage() {
     setSaving(true);
     try {
       const saved = id ? await updateActivity(getDb(), id, input) : await createActivity(getDb(), input);
-      toast.show(id ? 'Parada guardada' : 'Parada añadida');
+      toast.show(id ? 'Actividad guardada' : 'Actividad añadida');
       navigate(`/itinerario?fecha=${saved.date}`, { replace: true });
     } catch (err) {
       if (err instanceof ValidationError) setErrors(err.errors);
@@ -114,7 +114,7 @@ export function ActivityFormPage() {
 
   return (
     <>
-      <PageHeader title={id ? 'Editar parada' : 'Nueva parada'} back={true} />
+      <PageHeader title={id ? 'Editar actividad' : 'Nueva actividad'} back={true} />
       {state === 'loading' && <LoadingState />}
       {state === 'missing' && <ErrorState error="La actividad no existe o se ha eliminado." />}
       {typeof state === 'object' && <ErrorState error={state.error} />}
@@ -196,7 +196,7 @@ export function ActivityFormPage() {
           </Card>
 
           <Button type="submit" variant="primary" block disabled={saving}>
-            {saving ? 'Guardando…' : 'Guardar parada'}
+            {saving ? 'Guardando…' : 'Guardar actividad'}
           </Button>
         </form>
       )}

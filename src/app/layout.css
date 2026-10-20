@@ -378,3 +378,396 @@
     animation: none;
   }
 }
+
+/* =====================================================================
+   Rediseño v0.5: inicio, itinerario, día de vuelo y pulido general
+   ===================================================================== */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Pulido general */
+.app .card {
+  border-color: #ebe5da;
+  box-shadow: 0 1px 2px rgba(34, 33, 31, 0.04), 0 6px 18px rgba(34, 33, 31, 0.05);
+}
+.page-header h1 {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+.section-title {
+  margin-top: var(--sp-2);
+  font-weight: 700;
+}
+.quick-link svg {
+  box-sizing: content-box;
+  padding: 9px;
+  border-radius: 14px;
+  background: var(--c-accent-soft);
+}
+.quick-link {
+  gap: var(--sp-2);
+  min-height: 92px;
+  box-shadow: 0 1px 2px rgba(34, 33, 31, 0.04);
+}
+.bottom-nav a.active svg {
+  box-sizing: content-box;
+  padding: 3px 14px;
+  border-radius: var(--r-full);
+  background: var(--c-accent-soft);
+}
+.bottom-nav a {
+  gap: 1px;
+}
+
+/* Inicio: tarjeta del viaje */
+.hero {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding: var(--sp-5);
+  border-radius: var(--r-xl);
+  background: linear-gradient(135deg, #2a2522 0%, #3b322d 100%);
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(34, 33, 31, 0.22);
+}
+.hero::after {
+  content: '';
+  position: absolute;
+  right: -46px;
+  top: -46px;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: var(--c-accent);
+  opacity: 0.92;
+}
+.hero-top {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+}
+.hero-kicker {
+  font-size: var(--fs-sm);
+  color: rgba(255, 255, 255, 0.75);
+  padding-right: var(--sp-8);
+}
+.hero-title {
+  font-size: var(--fs-2xl);
+  font-weight: 800;
+  line-height: 1.15;
+  margin-top: var(--sp-1);
+  padding-right: var(--sp-8);
+}
+.hero-edit {
+  position: absolute;
+  right: -8px;
+  top: -8px;
+  color: #fff;
+}
+.hero-count {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: rgba(255, 255, 255, 0.85);
+}
+.hero-number {
+  font-size: 2.5rem;
+  font-weight: 800;
+  line-height: 1.05;
+  color: #fff;
+}
+
+/* Inicio: plan del día */
+.plan-day-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-full);
+  background: var(--c-accent-soft);
+  color: var(--c-accent);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+}
+.plan-date {
+  margin-top: calc(-1 * var(--sp-2));
+  margin-bottom: var(--sp-2);
+}
+.plan-list {
+  list-style: none;
+  margin: 0 0 var(--sp-3);
+  padding: 0;
+}
+.plan-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: 56px;
+  padding: var(--sp-2) 0;
+  border-top: 1px solid var(--c-border);
+  color: inherit;
+  text-decoration: none;
+}
+.plan-list li:first-child .plan-row {
+  border-top: 0;
+}
+.plan-time {
+  flex: none;
+  width: 3.2rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.plan-dot {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--c-surface-2);
+  color: var(--c-text-muted);
+}
+.plan-dot:empty::before {
+  content: '';
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--c-accent);
+}
+.kind-flight .plan-dot {
+  background: var(--c-accent);
+  color: #fff;
+}
+.kind-flight .plan-title {
+  color: var(--c-accent);
+}
+.kind-booking .plan-dot {
+  background: var(--c-info-soft);
+  color: var(--c-info);
+}
+.plan-title {
+  display: block;
+  font-weight: 600;
+}
+.plan-sub {
+  display: block;
+}
+.plan-row.is-done .plan-title {
+  text-decoration: line-through;
+  color: var(--c-text-muted);
+}
+
+/* Itinerario: selector de días */
+.day-chip {
+  position: relative;
+  min-width: 68px;
+  min-height: 62px;
+}
+.day-chip.has-flight {
+  border-color: var(--c-accent);
+  background: var(--c-accent-soft);
+}
+.day-chip.has-flight[aria-pressed='true'] {
+  background: var(--c-accent);
+  border-color: var(--c-accent);
+  color: #fff;
+}
+.day-chip-plane {
+  position: absolute;
+  top: 3px;
+  right: 4px;
+  width: 12px;
+  height: 12px;
+  color: var(--c-accent);
+}
+.day-chip[aria-pressed='true'] .day-chip-plane {
+  color: #fff;
+}
+
+/* Itinerario: cabecera del día */
+.day-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.day-head-kicker {
+  color: var(--c-accent);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.day-head-title {
+  font-size: var(--fs-2xl);
+  font-weight: 800;
+  line-height: 1.15;
+}
+.day-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.chip-select,
+.chip-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  max-width: 100%;
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--c-border-strong);
+  border-radius: var(--r-full);
+  background: var(--c-surface);
+  color: var(--c-text);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  text-decoration: none;
+}
+.chip-select select {
+  min-height: 38px;
+  max-width: 62vw;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+.chip-link.is-empty {
+  border-style: dashed;
+  color: var(--c-text-muted);
+}
+.day-more summary {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  color: var(--c-text-muted);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.day-more select {
+  margin-top: var(--sp-2);
+}
+
+/* Itinerario: día de vuelo */
+.flight-day {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  border: 1.5px solid var(--c-accent);
+  border-radius: var(--r-lg);
+  background: linear-gradient(180deg, var(--c-accent-soft), #fff 75%);
+}
+.flight-day-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--c-accent);
+  font-size: var(--fs-lg);
+}
+.flight-day-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--c-accent);
+  color: #fff;
+}
+.flight-day-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  background: #fff;
+  color: inherit;
+  text-decoration: none;
+}
+.flight-day-name {
+  font-weight: 700;
+}
+.flight-legs {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  margin: var(--sp-2) 0 0;
+  padding: 0;
+}
+.flight-route {
+  font-weight: 600;
+}
+.flight-layover {
+  display: inline-block;
+  margin-bottom: var(--sp-2);
+  padding: 2px 10px;
+  border-radius: var(--r-full);
+  background: var(--c-warning-soft);
+  color: var(--c-warning);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.booking-chip {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: 56px;
+  padding: var(--sp-3);
+  border: 1px solid #c4d8ea;
+  border-radius: var(--r-md);
+  background: var(--c-info-soft);
+  color: #1d4466;
+  text-decoration: none;
+}
+
+/* Itinerario: actividad (línea de tiempo) */
+.app .card.activity-card {
+  border-left: 5px solid var(--c-accent);
+}
+.app .card.activity-card.status-hecha {
+  border-left-color: var(--c-success);
+}
+.app .card.activity-card.status-omitida {
+  border-left-color: var(--c-border-strong);
+}
+.act-time {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 3.4rem;
+  font-variant-numeric: tabular-nums;
+}
+.act-time strong {
+  font-size: var(--fs-lg);
+  line-height: 1.1;
+}
+.act-time span {
+  font-size: var(--fs-xs);
+  color: var(--c-text-muted);
+}
+.act-loc {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  color: var(--c-text-muted);
+  font-size: var(--fs-sm);
+}

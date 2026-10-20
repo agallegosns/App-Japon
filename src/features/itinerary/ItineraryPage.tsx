@@ -3,7 +3,7 @@ import {
   ArrowDown,
   ArrowUp,
   CalendarDays,
-  BedDouble,
+  CalendarPlus,
   Check,
   Copy,
   ExternalLink,
@@ -12,6 +12,7 @@ import {
   MapPin,
   MoreHorizontal,
   Pencil,
+  Plane,
   Plus,
   RotateCcw,
   SkipForward,
@@ -20,20 +21,18 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { capitalize, formatDateLong, formatDateShort, formatDayMonth, nowInZone } from '../../models/datetime';
+import { capitalize, formatDateLong, formatDateShort, formatDayLong, formatDayMonth, nowInZone } from '../../models/datetime';
 import { ACTIVITY_STATUS_LABEL } from '../../models/labels';
-import { dayLodging, lodgingChangesOn } from '../../models/lodging';
+import { bookingsOnDate, flightDates, flightsOnDate } from '../../models/dayEvents';
 import type { Activity, Booking, Day } from '../../models/types';
 import { activityWarnings, detectOverlaps } from '../../models/warnings';
 import { deleteActivity, moveActivity, setActivityStatus } from '../../storage/activities';
 import { useAppData, type AppData } from '../../storage/appData';
 import { getDb } from '../../storage/db';
-import { setDayCity, setDayLodging } from '../../storage/trips';
 import { BottomSheet } from '../../ui/BottomSheet';
 import { Button, LinkButton } from '../../ui/Button';
 import { ConfirmDialog } from '../../ui/ConfirmDialog';
 import { copyText } from '../../ui/copy';
-import { Notice } from '../../ui/Notice';
 import { PageHeader } from '../../ui/PageHeader';
 import { ReorderList, type HandleProps } from '../../ui/ReorderList';
 import { Segmented } from '../../ui/Segmented';
@@ -41,6 +40,8 @@ import { EmptyState, ErrorState, LoadingState, errorMessage } from '../../ui/Sta
 import { StatusTag, type Tone } from '../../ui/StatusTag';
 import { useToast } from '../../ui/Toast';
 import { JapaneseAddressView } from '../bookings/JapaneseAddressView';
+import { shareCalendar } from '../settings/calendarActions';
+import { DayBookings, DayHeader, FlightDayCard } from './DayParts';
 import { externalMapUrl } from './mapLinks';
 
 type View = 'dia' | 'lista';
@@ -51,7 +52,7 @@ export function ItineraryPage() {
   const result = useAppData();
   return (
     <>
-      <PageHeader title="Itinerario" />
+      <PageHeader title="Itinerario" actions={<CalendarButton />} />
       {result.status === 'loading' && <LoadingState />}
       {result.status === 'error' && <ErrorState error={result.error} />}
       {result.status === 'ok' && <Itinerary data={result.data} />}
@@ -63,6 +64,7 @@ function Itinerary({ data }: { data: AppData }) {
   const [params, setParams] = useSearchParams();
   const view: View = params.get('vista') === 'lista' ? 'lista' : 'dia';
   const overlaps = useMemo(() => detectOverlaps(data.activities), [data.activities]);
+  const flightDays = useMemo(() => flightDates(data.bookings), [data.bookings]);
   const bookings = useMemo(() => new Map(data.bookings.map((b) => [b.id, b])), [data.bookings]);
 
   const dates = useMemo(() => {
@@ -112,11 +114,13 @@ function Itinerary({ data }: { data: AppData }) {
       />
       {view === 'dia' ? (
         <>
-          <DayChips dates={dates} days={data.days} selected={selected} onSelect={(d) => setParam('fecha', d)} />
+          <DayChips dates={dates} days={data.days} selected={selected} flights={flightDays} onSelect={(d) => setParam('fecha', d)} />
           {selected && (
             <DayView
               date={selected}
               day={data.days.find((d) => d.date === selected) ?? null}
+              dayNumber={data.days.findIndex((d) => d.date === selected) + 1 || null}
+              totalDays={data.days.length}
               cities={data.trip?.cities ?? []}
               activities={data.activities.filter((a) => a.date === selected)}
               overlaps={overlaps}
@@ -132,7 +136,31 @@ function Itinerary({ data }: { data: AppData }) {
   );
 }
 
-function DayChips({ dates, days, selected, onSelect }: { dates: string[]; days: Day[]; selected: string | null; onSelect: (d: string) => void }) {
+function CalendarButton() {
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  return (
+    <Button
+      variant="ghost"
+      icon={<CalendarPlus size={24} />}
+      label="Añadir el itinerario al Calendario del iPhone con avisos"
+      disabled={busy}
+      onClick={async () => {
+        setBusy(true);
+        try {
+          const r = await shareCalendar();
+          if (r.outcome !== 'cancelled') toast.show(`Calendario preparado: ${r.count} eventos con aviso`);
+        } catch (e) {
+          toast.error(errorMessage(e));
+        } finally {
+          setBusy(false);
+        }
+      }}
+    />
+  );
+}
+
+function DayChips({ dates, days, selected, flights, onSelect }: { dates: string[]; days: Day[]; selected: string | null; flights: Set<string>; onSelect: (d: string) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     ref.current?.querySelector('[aria-pressed="true"]')?.scrollIntoView({ inline: 'center', block: 'nearest' });
@@ -147,11 +175,12 @@ function DayChips({ dates, days, selected, onSelect }: { dates: string[]; days: 
           <button
             key={date}
             type="button"
-            className={`day-chip${day ? '' : ' is-outside'}`}
+            className={`day-chip${day ? '' : ' is-outside'}${flights.has(date) ? ' has-flight' : ''}`}
             aria-pressed={date === selected}
             onClick={() => onSelect(date)}
-            aria-label={`${formatDateLong(date)}${day?.city ? `, ${day.city}` : ''}`}
+            aria-label={`${formatDateLong(date)}${day?.city ? `, ${day.city}` : ''}${flights.has(date) ? ', día de vuelo' : ''}`}
           >
+            {flights.has(date) && <Plane size={14} className="day-chip-plane" aria-hidden="true" />}
             <span>{day ? `Día ${dayNumber}` : 'Fuera'}</span>
             <strong>{formatDayMonth(date)}</strong>
             <span className="break" style={{ maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -169,9 +198,11 @@ interface ListProps {
   bookings: Map<string, Booking>;
 }
 
-function DayView({ date, day, cities, activities, overlaps, bookings, allBookings }: ListProps & { date: string; day: Day | null; cities: string[]; activities: Activity[]; allBookings: Booking[] }) {
+function DayView({ date, day, dayNumber, totalDays, cities, activities, overlaps, bookings, allBookings }: ListProps & { date: string; day: Day | null; dayNumber: number | null; totalDays: number; cities: string[]; activities: Activity[]; allBookings: Booking[] }) {
   const toast = useToast();
   const sorted = [...activities].sort((a, b) => a.order - b.order);
+  const flights = flightsOnDate(date, allBookings);
+  const dayBookings = bookingsOnDate(date, allBookings, activities);
 
   const move = async (id: string, to: number) => {
     try {
@@ -183,43 +214,26 @@ function DayView({ date, day, cities, activities, overlaps, bookings, allBooking
 
   return (
     <section className="stack" aria-label={formatDateLong(date)}>
-      <div className="spread">
-        <h2>{capitalize(formatDateLong(date))}</h2>
-      </div>
-      {day ? (
-        cities.length > 0 && (
-          <div className="field">
-            <label className="field-label" htmlFor="day-city">
-              Ciudad del día
-            </label>
-            <select
-              id="day-city"
-              className="input"
-              value={day.city}
-              onChange={(e) => setDayCity(getDb(), day.id, e.target.value).catch((err: unknown) => toast.error(errorMessage(err)))}
-            >
-              <option value="">Sin asignar</option>
-              {[...new Set([...cities, ...(day.city && !cities.includes(day.city) ? [day.city] : [])])].map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </div>
-        )
-      ) : (
-        <Notice tone="warning">Este día queda fuera de las fechas del viaje.</Notice>
-      )}
+      <DayHeader
+        date={date}
+        title={capitalize(formatDayLong(date))}
+        day={day}
+        dayNumber={dayNumber}
+        totalDays={totalDays}
+        cities={cities}
+        bookings={allBookings}
+      />
+      <FlightDayCard flights={flights} />
+      <DayBookings bookings={dayBookings} />
 
-      <LodgingBlock date={date} day={day} bookings={allBookings} />
-
+      <h3 className="section-title">Actividades del día</h3>
       {sorted.length === 0 ? (
-        <EmptyState icon={<MapPin size={26} />} title="Sin paradas este día">
-          Añade visitas, comidas o traslados.
+        <EmptyState icon={<MapPin size={26} />} title="Aún no hay actividades este día">
+          Una actividad es algo que haréis ese día: una visita, una comida o un traslado. Añádela con su hora y su lugar.
         </EmptyState>
       ) : (
         <ReorderList
-          label={`Paradas del ${formatDateShort(date)}`}
+          label={`Actividades del ${formatDateShort(date)}`}
           items={sorted}
           onMove={move}
           renderItem={(a, i, handle) => (
@@ -236,78 +250,8 @@ function DayView({ date, day, cities, activities, overlaps, bookings, allBooking
         />
       )}
       <LinkButton to={`/itinerario/nueva?fecha=${date}`} variant="primary" block icon={<Plus size={20} />}>
-        Añadir parada
+        Añadir actividad
       </LinkButton>
-    </section>
-  );
-}
-
-function LodgingBlock({ date, day, bookings }: { date: string; day: Day | null; bookings: Booking[] }) {
-  const toast = useToast();
-  const lodging = dayLodging(date, day, bookings);
-  const changes = lodgingChangesOn(date, bookings);
-  const hotels = bookings.filter((b) => b.category === 'alojamiento' && b.status !== 'cancelada');
-  const names =
-    lodging.source === 'manual' ? [lodging.booking] : lodging.source === 'auto' ? lodging.bookings : [];
-
-  return (
-    <section className="card stack" aria-label="Alojamiento de la noche">
-      <div className="row" style={{ gap: 'var(--sp-2)' }}>
-        <BedDouble size={20} aria-hidden="true" />
-        <h3 style={{ margin: 0 }}>Alojamiento de esta noche</h3>
-      </div>
-      {names.length > 0 ? (
-        <ul className="list" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-          {names.map((b) => (
-            <li key={b.id}>
-              <Link className="list-item" to={`/reservas/${b.id}`}>
-                <span className="grow break">
-                  {b.name}
-                  {b.address && <span className="muted small" style={{ display: 'block' }}>{b.address}</span>}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="muted small">
-          {hotels.length === 0
-            ? 'Aún no hay ningún alojamiento. Añádelo en Reservas con sus fechas de check-in y check-out y aparecerá aquí.'
-            : 'Ningún alojamiento cubre esta noche. Elige uno abajo o revisa sus fechas.'}
-        </p>
-      )}
-      {(changes.checkOut.length > 0 || changes.checkIn.length > 0) && (
-        <div className="row-wrap">
-          {changes.checkOut.map((b) => (
-            <StatusTag key={`o-${b.id}`} tone="warning">Check-out hoy: {b.name}</StatusTag>
-          ))}
-          {changes.checkIn.map((b) => (
-            <StatusTag key={`i-${b.id}`} tone="info">Check-in hoy: {b.name}</StatusTag>
-          ))}
-        </div>
-      )}
-      {day && hotels.length > 0 && (
-        <div className="field">
-          <label className="field-label" htmlFor="day-lodging">
-            Elegir alojamiento a mano
-          </label>
-          <select
-            id="day-lodging"
-            className="input"
-            value={day.lodgingId ?? ''}
-            onChange={(e) =>
-              setDayLodging(getDb(), day.id, e.target.value || null).catch((err: unknown) => toast.error(errorMessage(err)))
-            }
-          >
-            <option value="">Automático (según check-in y check-out)</option>
-            {hotels.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
     </section>
   );
 }
@@ -382,20 +326,29 @@ function ActivityCard({ activity: a, overlapsWith, booking, index, total, handle
   };
 
   return (
-    <article className={`card activity-card${a.status === 'hecha' ? ' is-done' : ''}${a.status === 'omitida' ? ' is-skipped' : ''}`} aria-label={a.title}>
+    <article className={`card activity-card status-${a.status}${a.status === 'hecha' ? ' is-done' : ''}${a.status === 'omitida' ? ' is-skipped' : ''}`} aria-label={a.title}>
       <div className="row" style={{ alignItems: 'flex-start' }}>
         {reorderable && (
           <span className="drag-handle" {...handle} aria-hidden="true" title="Arrastrar para reordenar">
             <GripVertical size={20} />
           </span>
         )}
-        <div className="grow">
-          <p className="muted small">
-            {time}
-            {a.durationMin ? ` · ${a.durationMin} min` : ''}
-          </p>
+        <div className="act-time" aria-label={a.startTime ? `Hora ${time}` : 'Sin hora'}>
+          <strong>{a.startTime ?? '--:--'}</strong>
+          {a.endTime && <span>{a.endTime}</span>}
+        </div>
+        <div className="grow act-body">
           <p className="activity-title break">{a.title}</p>
-          {a.location && <p className="small break">{a.location}</p>}
+          {(a.location || a.durationMin) && (
+            <p className="act-loc break">
+              {a.location && (
+                <>
+                  <MapPin size={14} aria-hidden="true" /> {a.location}
+                </>
+              )}
+              {a.durationMin ? `${a.location ? ' · ' : ''}${a.durationMin} min` : ''}
+            </p>
+          )}
           <div className="row-wrap" style={{ marginTop: 4 }}>
             {a.status !== 'pendiente' && <StatusTag tone={STATUS_TONE[a.status]}>{ACTIVITY_STATUS_LABEL[a.status]}</StatusTag>}
             {booking && (
@@ -466,13 +419,13 @@ function ActivityCard({ activity: a, overlapsWith, booking, index, total, handle
             </Button>
           )}
           <Button block icon={<Trash2 size={18} />} style={{ color: 'var(--c-danger)' }} onClick={() => { setMenu(false); setConfirm(true); }}>
-            Eliminar parada
+            Eliminar actividad
           </Button>
         </div>
       </BottomSheet>
       <ConfirmDialog
         open={confirm}
-        title="¿Eliminar esta parada?"
+        title="¿Eliminar esta actividad?"
         message={<>Se borrará «{a.title}» del itinerario. No se puede deshacer.</>}
         confirmLabel="Eliminar"
         danger
@@ -480,7 +433,7 @@ function ActivityCard({ activity: a, overlapsWith, booking, index, total, handle
         onConfirm={async () => {
           try {
             await deleteActivity(getDb(), a.id);
-            toast.show('Parada eliminada');
+            toast.show('Actividad eliminada');
           } catch (e) {
             toast.error(errorMessage(e));
           }
