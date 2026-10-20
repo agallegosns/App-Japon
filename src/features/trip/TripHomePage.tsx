@@ -18,7 +18,7 @@ import { Link } from 'react-router-dom';
 import { useOnline } from '../../app/useConnectivity';
 import { calendarMarkers, monthOf } from '../../models/calendar';
 import { homeDay } from '../../models/dayEvents';
-import { capitalize, formatDateRange, formatDayLong, formatLdt, nowInZone } from '../../models/datetime';
+import { formatDateRange, formatLdt, nowInZone } from '../../models/datetime';
 import { CATEGORY_LABEL } from '../../models/labels';
 import { hasAnyData, useAppData, type AppData } from '../../storage/appData';
 import { backupReminder } from '../../storage/meta';
@@ -65,17 +65,23 @@ function TripHome({ data }: { data: AppData }) {
   const [selected, setSelected] = useState<string>(
     () => homeDay(today, data.days, data.activities, data.bookings) ?? (data.trip && today < data.trip.startDate ? data.trip.startDate : today),
   );
+  const [expanded, setExpanded] = useState(false);
+  const [anchor, setAnchor] = useState(selected);
   const [month, setMonth] = useState(() => monthOf(selected));
   const markers = useMemo(() => calendarMarkers(data.activities, data.bookings), [data.activities, data.bookings]);
   const reminder = backupReminder(data.backup, hasAnyData(data), now);
-  const pending = pendingInfo(data);
+
+  const select = (date: string) => {
+    setSelected(date);
+    setAnchor(date);
+    setMonth(monthOf(date));
+  };
 
   return (
     <div className="stack-lg">
       {reminder && (
         <Notice tone="warning">
-          <strong>Haz una copia de seguridad.</strong> {reminder}{' '}
-          <Link to="/ajustes">Ir a Ajustes</Link>
+          <strong>Haz una copia de seguridad.</strong> <span title={reminder}>Protege tus datos.</span> <Link to="/ajustes">Hacerla ahora</Link>
         </Notice>
       )}
 
@@ -84,10 +90,18 @@ function TripHome({ data }: { data: AppData }) {
       {data.trip && (
         <>
           <TripCalendar
+            expanded={expanded}
+            onToggle={() => {
+              if (!expanded) setMonth(monthOf(selected));
+              else setAnchor(selected);
+              setExpanded((v) => !v);
+            }}
             month={month}
             onMonthChange={setMonth}
+            weekAnchor={anchor}
+            onWeekChange={setAnchor}
             selected={selected}
-            onSelect={setSelected}
+            onSelect={select}
             today={today}
             tripStart={data.trip.startDate}
             tripEnd={data.trip.endDate}
@@ -98,54 +112,62 @@ function TripHome({ data }: { data: AppData }) {
       )}
 
       <QuickLinks />
-
-      <Card title="Próxima reserva">
-        {(() => {
-          const b = nextBooking(data.bookings, now);
-          if (!b)
-            return (
-              <div className="stack">
-                <p className="muted">No hay reservas próximas con fecha.</p>
-                <LinkButton to="/reservas/nueva" variant="secondary" icon={<Ticket size={18} />}>
-                  Añadir reserva
-                </LinkButton>
-              </div>
-            );
-          return (
-            <Link to={`/reservas/${b.id}`} className="card-link-row">
-              <div className="grow">
-                <p className="card-title">{b.name}</p>
-                <p className="muted small">
-                  {CATEGORY_LABEL[b.category]} · {formatLdt(b.start ?? b.checkIn)}
-                </p>
-              </div>
-              <ChevronRight size={20} aria-hidden="true" />
-            </Link>
-          );
-        })()}
-      </Card>
-
-      {pending.length > 0 && (
-        <Card
-          title="Información pendiente"
-          action={<StatusTag tone="warning" icon={<AlertTriangle size={12} />}>{pending.length}</StatusTag>}
-        >
-          <ul className="list" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-            {pending.slice(0, 6).map((p) => (
-              <li key={p.key}>
-                <Link to={p.to} className="list-item">
-                  <span className="grow small">{p.text}</span>
-                  <ChevronRight size={18} aria-hidden="true" />
-                </Link>
-              </li>
-            ))}
-          </ul>
-          {pending.length > 6 && <p className="muted small" style={{ marginTop: 'var(--sp-2)' }}>Y {pending.length - 6} más.</p>}
-        </Card>
-      )}
-
-      <OfflineStatus />
+      <Upcoming data={data} now={now} />
+      <StatusStrip />
     </div>
+  );
+}
+
+/** Próxima reserva y lo que falta por completar, en una sola tarjeta. */
+function Upcoming({ data, now }: { data: AppData; now: number }) {
+  const b = nextBooking(data.bookings, now);
+  const pending = pendingInfo(data);
+  return (
+    <Card title="Lo próximo y lo pendiente">
+      <div className="stack">
+        {b ? (
+          <Link to={`/reservas/${b.id}`} className="card-link-row">
+            <div className="grow">
+              <p className="small muted">Próxima reserva</p>
+              <p className="card-title">{b.name}</p>
+              <p className="muted small">
+                {CATEGORY_LABEL[b.category]} · {formatLdt(b.start ?? b.checkIn)}
+              </p>
+            </div>
+            <ChevronRight size={20} aria-hidden="true" />
+          </Link>
+        ) : (
+          <div className="stack">
+            <p className="muted">No hay reservas próximas con fecha.</p>
+            <LinkButton to="/reservas/nueva" variant="secondary" icon={<Ticket size={18} />}>
+              Añadir reserva
+            </LinkButton>
+          </div>
+        )}
+        {pending.length > 0 && (
+          <details className="pending-details">
+            <summary>
+              <AlertTriangle size={16} aria-hidden="true" />
+              <span className="grow">
+                {pending.length} {pending.length === 1 ? 'cosa por completar' : 'cosas por completar'}
+              </span>
+              <ChevronRight size={16} aria-hidden="true" className="pending-chevron" />
+            </summary>
+            <ul className="list" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+              {pending.slice(0, 8).map((p) => (
+                <li key={p.key}>
+                  <Link to={p.to} className="list-item">
+                    <span className="grow small">{p.text}</span>
+                    <ChevronRight size={18} aria-hidden="true" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            {pending.length > 8 && <p className="muted small">Y {pending.length - 8} más.</p>}
+          </details>
+        )}
+      </div>
+    </Card>
   );
 }
 
@@ -174,10 +196,7 @@ function TripSummary({ data, now }: { data: AppData; now: number }) {
     <section className="hero hero-compact" aria-label="Resumen del viaje">
       <div className="hero-top">
         <div className="grow">
-          <p className="hero-kicker">
-            {formatDateRange(trip.startDate, trip.endDate)}
-            {trip.cities.length > 0 && ` · ${trip.cities.join(', ')}`}
-          </p>
+          <p className="hero-kicker">{formatDateRange(trip.startDate, trip.endDate)}</p>
           <h2 className="hero-title">{trip.name}</h2>
         </div>
         <LinkButton to="/viaje/editar" variant="ghost" small icon={<Pencil size={18} />} label="Editar viaje" className="hero-edit" />
@@ -192,9 +211,7 @@ function TripSummary({ data, now }: { data: AppData; now: number }) {
         <p className="hero-count">
           <span className="hero-number">Día {phase.dayNumber}</span>
           <span>
-            de {phase.totalDays} · {capitalize(formatDayLong(phase.today))}
-            {' · '}
-            {today?.city ? today.city : 'ciudad sin asignar'}
+            de {phase.totalDays} · {today?.city ? today.city : 'ciudad sin asignar'}
           </span>
         </p>
       )}
@@ -223,7 +240,8 @@ function QuickLinks() {
   );
 }
 
-function OfflineStatus() {
+/** Estado de un vistazo: conexión, almacenamiento y sincronización con la pareja. */
+function StatusStrip() {
   const online = useOnline();
   const [info, setInfo] = useState<StorageInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -234,45 +252,34 @@ function OfflineStatus() {
   }, []);
   const sync = useSync();
   return (
-    <Card title="Estado y sincronización">
-      <div className="stack">
-        <div className="spread">
-          <span>Conexión</span>
-          <span className={`offline-pill${online ? '' : ' is-offline'}`}>
-            <span className="dot" aria-hidden="true" />
-            {online ? 'En línea' : 'Sin conexión'}
-          </span>
-        </div>
-        <div className="spread">
-          <span>Almacenamiento persistente</span>
-          {error ? (
-            <StatusTag tone="danger">Error</StatusTag>
-          ) : info === null ? (
-            <StatusTag>Comprobando…</StatusTag>
-          ) : info.persisted ? (
-            <StatusTag tone="success" icon={<ShieldCheck size={12} />}>Concedido</StatusTag>
-          ) : (
-            <StatusTag tone="warning">No concedido</StatusTag>
-          )}
-        </div>
-        <div className="spread">
-          <span>Compartir con tu pareja</span>
-          <Link to="/ajustes" className="sync-status-link">
-            {sync.config === null ? (
-              <StatusTag>No activado</StatusTag>
-            ) : sync.error ? (
-              <StatusTag tone="danger">Error</StatusTag>
-            ) : sync.syncing ? (
-              <StatusTag tone="info">Sincronizando…</StatusTag>
-            ) : (
-              <StatusTag tone="success">{sync.config.lastSyncAt ? 'Sincronizado' : 'Pendiente'}</StatusTag>
-            )}
-          </Link>
-        </div>
-        <LinkButton to="/sin-conexion" variant="secondary" block icon={<CloudDownload size={18} />}>
-          Preparar Japón sin conexión
-        </LinkButton>
-      </div>
-    </Card>
+    <section className="status-strip" aria-label="Estado de la app">
+      <span className={`offline-pill${online ? '' : ' is-offline'}`}>
+        <span className="dot" aria-hidden="true" />
+        {online ? 'En línea' : 'Sin conexión'}
+      </span>
+      {error ? (
+        <StatusTag tone="danger">Almacenamiento: error</StatusTag>
+      ) : info === null ? (
+        <StatusTag>Almacenamiento…</StatusTag>
+      ) : info.persisted ? (
+        <StatusTag tone="success" icon={<ShieldCheck size={12} />}>Datos protegidos</StatusTag>
+      ) : (
+        <StatusTag tone="warning">Almacenamiento no concedido</StatusTag>
+      )}
+      <Link to="/ajustes" className="sync-status-link" aria-label="Compartir con tu pareja">
+        {sync.config === null ? (
+          <StatusTag>Pareja: no activado</StatusTag>
+        ) : sync.error ? (
+          <StatusTag tone="danger">Pareja: error</StatusTag>
+        ) : sync.syncing ? (
+          <StatusTag tone="info">Pareja: sincronizando…</StatusTag>
+        ) : (
+          <StatusTag tone="success">{sync.config.lastSyncAt ? 'Pareja: sincronizado' : 'Pareja: pendiente'}</StatusTag>
+        )}
+      </Link>
+      <LinkButton to="/sin-conexion" variant="ghost" small icon={<CloudDownload size={16} />}>
+        Preparar sin conexión
+      </LinkButton>
+    </section>
   );
 }

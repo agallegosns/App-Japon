@@ -154,6 +154,14 @@ iPhone · **[pendiente]** sin hacer · **[bloqueado]** depende de algo externo.
 - [dispositivo] Comprobar el límite gratuito de KV (1.000 escrituras al día) con un uso normal.
 - [bloqueado] Notificaciones push cuando la pareja cambia algo (requieren más servidor): no se hace.
 
+## v0.9.1 — Inicio más limpio
+
+- [hecho] Calendario de una semana por defecto (≈ 1/4 de alto) con botón para ver el mes completo; flechas por semana.
+- [hecho] Agenda del día con resumen («3 actividades · 1 vuelo · 1 reserva»).
+- [hecho] «Próxima reserva» e «Información pendiente» fusionadas en una tarjeta («Lo próximo y lo pendiente»); lo pendiente va plegado.
+- [hecho] Barra de estado compacta (conexión, datos protegidos, pareja) en lugar de una tarjeta alta; avisos y tarjeta del viaje más cortos.
+- [dispositivo] Ver en el iPhone si la semana y los atajos quedan bien repartidos y cómodos de pulsar.
+
 ## Siguientes fases (no empezar sin petición)
 
 - [pendiente] Mapa con conexión (marcadores de actividades y alojamientos, ubicación GPS).

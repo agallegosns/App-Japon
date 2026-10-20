@@ -38,8 +38,9 @@ existen en cada iPhone y en las copias de seguridad que hagas.
   Las reservas del día (restaurantes, entradas, trenes) salen aparte. Botón del calendario arriba a la derecha.
 - **Yenes y euros:** conversor en el inicio (botón «Yenes»). La cotización se actualiza sola con conexión (BCE) y se
   guarda en el móvil; también puedes escribir la que te aplique tu banco. Sin conexión usa la última guardada.
-- **Inicio:** un **calendario** del viaje. Cada día marca si hay vuelo (avión), actividades, reservas o cambio de hotel, y debajo se
-  ve automáticamente la agenda del día seleccionado (hoy, o el primer día con plan antes del viaje).
+- **Inicio:** un **calendario de una semana** (botón «Ver el mes completo» para desplegarlo). Cada día marca si hay vuelo, tren, actividades,
+  reservas o cambio de hotel, y debajo se ve automáticamente la agenda del día seleccionado (hoy, o el primer día con plan antes del
+  viaje) con un resumen («3 actividades · 1 vuelo»). Más abajo, atajos, «Lo próximo y lo pendiente» y una barra de estado.
 - **Compartir con tu pareja:** Ajustes → «Compartir con tu pareja». Un móvil crea un **código secreto** y el otro lo escribe: desde
   ese momento lo que añadáis (reservas, actividades, trenes, documentos…) aparece en los dos. Los datos viajan **cifrados**; el servidor
   (un Worker gratuito de Cloudflare propio) solo guarda datos ilegibles. Se sincroniza solo al abrir la app, al recuperar la conexión y

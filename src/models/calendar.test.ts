@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addMonths, calendarMarkers, monthGrid, monthLabel, monthOf } from './calendar';
+import { addMonths, calendarMarkers, monthGrid, monthLabel, monthOf, weekOf } from './calendar';
 import type { Activity, Booking } from './types';
 
 describe('calendario del mes', () => {
@@ -16,6 +16,14 @@ describe('calendario del mes', () => {
     const grid = monthGrid('2030-04'); // 1 abr 2030 es lunes
     expect(grid[0]?.[0]).toBe('2030-04-01');
     expect(monthGrid('2031-02').flat().filter((d) => monthOf(d) === '2031-02')).toHaveLength(28);
+  });
+
+  it('la semana va de lunes a domingo, también al cruzar de mes o de año', () => {
+    expect(weekOf('2026-10-20')).toEqual(['2026-10-19', '2026-10-20', '2026-10-21', '2026-10-22', '2026-10-23', '2026-10-24', '2026-10-25']);
+    expect(weekOf('2026-10-25')[0]).toBe('2026-10-19'); // domingo
+    expect(weekOf('2026-10-19')[0]).toBe('2026-10-19'); // lunes
+    expect(weekOf('2030-05-01')).toEqual(['2030-04-29', '2030-04-30', '2030-05-01', '2030-05-02', '2030-05-03', '2030-05-04', '2030-05-05']);
+    expect(weekOf('2030-12-31')[6]).toBe('2031-01-05');
   });
 
   it('navega entre meses cruzando el año', () => {

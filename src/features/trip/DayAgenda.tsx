@@ -26,6 +26,22 @@ function Row({ e }: { e: TimelineEntry }) {
   );
 }
 
+function plural(n: number, one: string, many: string): string {
+  return `${n} ${n === 1 ? one : many}`;
+}
+
+/** «3 actividades · 1 vuelo · 2 reservas»: lo que hay ese día de un vistazo (vacío si no hay nada). */
+export function summarize(entries: TimelineEntry[]): string {
+  const count = (k: TimelineEntry['kind']) => entries.filter((e) => e.kind === k).length;
+  const parts = [
+    count('activity') > 0 && plural(count('activity'), 'actividad', 'actividades'),
+    count('flight') > 0 && plural(count('flight'), 'vuelo', 'vuelos'),
+    count('transit') > 0 && plural(count('transit'), 'trayecto en tren', 'trayectos en tren'),
+    count('booking') > 0 && plural(count('booking'), 'reserva', 'reservas'),
+  ].filter(Boolean);
+  return parts.join(' · ');
+}
+
 /** Lo que hay el día seleccionado en el calendario: vuelos, actividades, reservas y dónde se duerme. */
 export function DayAgenda({ date, today, data }: { date: string; today: string; data: AppData }) {
   const entries = dayTimeline(date, data.activities, data.bookings);
@@ -35,6 +51,7 @@ export function DayAgenda({ date, today, data }: { date: string; today: string; 
   const sleeps = lodging.source === 'manual' ? [lodging.booking] : lodging.source === 'auto' ? lodging.bookings : [];
   const changes = lodgingChangesOn(date, data.bookings);
   const label = date === today ? 'Hoy' : date < today ? 'Pasado' : null;
+  const summary = summarize(entries);
   const prevCity = dayNumber > 1 ? data.days[dayNumber - 2]?.city : '';
   const moving = day?.city && prevCity && day.city !== prevCity;
 
@@ -50,6 +67,8 @@ export function DayAgenda({ date, today, data }: { date: string; today: string; 
         </div>
         {label === 'Hoy' && <span className="plan-day-tag">Hoy</span>}
       </div>
+
+      {summary && <p className="agenda-summary">{summary}</p>}
 
       {(sleeps.length > 0 || changes.checkOut.length > 0 || changes.checkIn.length > 0 || moving) && (
         <div className="row-wrap">

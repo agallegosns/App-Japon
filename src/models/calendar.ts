@@ -43,6 +43,13 @@ export function monthGrid(ym: YearMonth): string[][] {
   return weeks;
 }
 
+/** Los siete días (lunes a domingo) de la semana que contiene `date`. */
+export function weekOf(date: string): string[] {
+  const dow = new Date(Date.UTC(Number(date.slice(0, 4)), Number(date.slice(5, 7)) - 1, Number(date.slice(8, 10)), 12)).getUTCDay();
+  const start = addDays(date, -((dow + 6) % 7));
+  return Array.from({ length: 7 }, (_, i) => addDays(start, i));
+}
+
 export interface DayMarkers {
   flight: boolean;
   /** Hay un trayecto en tren/transporte (día de traslado). */

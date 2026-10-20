@@ -141,15 +141,55 @@ describe('itinerario, día de vuelo y calendario', () => {
     expect(within(agenda2).getByRole('link', { name: 'Abrir el día' })).toHaveAttribute('href', '#/itinerario?fecha=2030-05-02');
   });
 
-  it('el calendario cambia de mes y vuelve a hoy', async () => {
+  it('el calendario empieza en vista de semana y se despliega al mes completo', async () => {
     await seed();
     window.location.hash = '#/';
     render(<App />);
-    await userEvent.click(await screen.findByRole('button', { name: 'Mes siguiente' }));
+    expect(await screen.findByText('Mayo de 2030')).toBeInTheDocument();
+    // Vista compacta: solo los 7 días de la semana (29 abr – 5 may); el resto del mes no aparece.
+    expect(screen.getByRole('button', { name: /jueves 2 de mayo/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /viernes 10 de mayo/ })).toBeNull();
+    expect(screen.getAllByRole('button', { name: /de mayo|de abril/ }).filter((b) => b.className.includes('cal-day'))).toHaveLength(7);
+
+    await userEvent.click(screen.getByRole('button', { name: /Ver el mes completo/ }));
+    expect(screen.getByRole('button', { name: /viernes 10 de mayo/ })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Mes siguiente' }));
     expect(screen.getByText('Junio de 2030')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Ir a hoy' }));
     expect(screen.queryByText('Junio de 2030')).toBeNull();
-    expect(screen.queryByText('Mayo de 2030')).toBeNull();
+
+    await userEvent.click(screen.getByRole('button', { name: /Ver solo la semana/ }));
+    expect(screen.queryByRole('button', { name: /viernes 10 de mayo/ })).toBeNull();
+  });
+
+  it('en la vista de semana las flechas cambian de semana sin cambiar el día elegido', async () => {
+    await seed();
+    window.location.hash = '#/';
+    render(<App />);
+    await screen.findByText('Mayo de 2030');
+    await userEvent.click(screen.getByRole('button', { name: 'Semana siguiente' }));
+    expect(screen.getByRole('button', { name: /viernes 10 de mayo/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /jueves 2 de mayo/ })).toBeNull();
+    // el día elegido (1 de mayo) sigue siendo el de la agenda
+    expect(screen.getByRole('region', { name: /Agenda del miércoles 1 de mayo/ })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Semana anterior' }));
+    expect(screen.getByRole('button', { name: /jueves 2 de mayo/ })).toBeInTheDocument();
+  });
+
+  it('el inicio resume el día y junta la próxima reserva y lo pendiente en una sola tarjeta', async () => {
+    await seed();
+    window.location.hash = '#/';
+    render(<App />);
+    const agenda = await screen.findByRole('region', { name: /Agenda del miércoles 1 de mayo/ });
+    expect(within(agenda).getByText('1 vuelo')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /jueves 2 de mayo/ }));
+    const agenda2 = await screen.findByRole('region', { name: /Agenda del jueves 2 de mayo/ });
+    expect(within(agenda2).getByText('1 actividad · 1 vuelo')).toBeInTheDocument();
+    expect(screen.getByText('Lo próximo y lo pendiente')).toBeInTheDocument();
+    expect(screen.queryByText('Información pendiente')).toBeNull();
+    const estado = screen.getByRole('region', { name: 'Estado de la app' });
+    expect(within(estado).getByText('Pareja: no activado')).toBeInTheDocument();
+    expect(within(estado).getByRole('link', { name: /Preparar sin conexión/ })).toHaveAttribute('href', '#/sin-conexion');
   });
 
   it('un día sin nada lo dice y deja añadir una actividad', async () => {

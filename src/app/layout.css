@@ -1579,3 +1579,73 @@
   letter-spacing: 0.04em;
   word-break: break-all;
 }
+
+/* =====================================================================
+   v0.9.1: inicio más limpio (calendario de una semana, tarjetas fusionadas)
+   ===================================================================== */
+.cal-compact {
+  padding: var(--sp-2) var(--sp-3) var(--sp-2);
+}
+.cal-compact .cal-day {
+  min-height: 60px;
+}
+.cal-compact .cal-head h2 {
+  font-size: var(--fs-md);
+}
+.cal-foot .cal-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-left: auto;
+}
+.cal-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 34px;
+  padding: 0 var(--sp-2);
+  border: 0;
+  background: transparent;
+  color: var(--c-text-muted);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+}
+.agenda-summary {
+  margin-top: calc(-1 * var(--sp-1));
+  color: var(--c-text-muted);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.pending-details {
+  padding-top: var(--sp-2);
+  border-top: 1px solid var(--c-border);
+}
+.pending-details summary {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 44px;
+  color: var(--c-warning);
+  font-weight: 700;
+  list-style: none;
+  cursor: pointer;
+}
+.pending-details summary::-webkit-details-marker {
+  display: none;
+}
+.pending-chevron {
+  transition: transform 0.15s ease;
+}
+.pending-details[open] .pending-chevron {
+  transform: rotate(90deg);
+}
+.status-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-1) 0 var(--sp-2);
+}
+.status-strip .sync-status-link {
+  text-decoration: none;
+}
