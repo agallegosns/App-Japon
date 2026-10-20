@@ -33,7 +33,25 @@ iPhone · **[pendiente]** sin hacer · **[bloqueado]** depende de algo externo.
 
 ## Fase 3 — Reservas, itinerario y almacenamiento
 
-- [pendiente]
+- [hecho] Modelos y repositorios Dexie con esquema versionado y test de migración.
+- [hecho] Reservas: crear/editar/eliminar (con confirmación), lista por fecha y por categoría, filtros, detalle,
+  adjuntos (PDF, imagen, QR/código), visor a pantalla completa, dirección en japonés a pantalla completa,
+  copiar dirección y localizador, enlaces externos, avisos de datos que faltan.
+- [hecho] Itinerario: días y ciudades, vista diaria y cronológica, reordenar (arrastre y botones), añadir/
+  eliminar paradas, asociar reservas, marcar hecha/omitida, copiar dirección, solapes y avisos.
+- [hecho] Pantalla Viaje con cuenta atrás, día/ciudad actual, próxima actividad y reserva, accesos rápidos,
+  información pendiente, aviso de copia y estado sin conexión. Estados vacíos con acción.
+- [hecho] Ajustes: exportar (zip, hoja de compartir), importar con vista previa (combinar/reemplazar), borrar
+  todo con doble confirmación, almacenamiento persistente y espacio, versión y búsqueda de actualización.
+- [hecho] «Preparar Japón sin conexión» con comprobaciones reales; mapas y traducción «pendiente de fase».
+- [hecho] Tests: CRUD de reservas y actividades, adjuntos, reordenación, solapes, exportar→importar, migraciones.
+- [hecho] Recorrido completo probado en Chromium (crear, adjuntar, exportar, borrar, importar, modo sin conexión).
+- [dispositivo] Hoja de compartir con el zip → Guardar en Archivos y AirDrop.
+- [dispositivo] Importar el zip desde Archivos en el otro iPhone.
+- [dispositivo] Visor de PDF real de una reserva (varias páginas, japonés).
+- [dispositivo] Arrastre para reordenar con el dedo.
+- [dispositivo] Pantalla completa del QR y que no se apague la pantalla (Wake Lock).
+- [dispositivo] Aviso «Actualización disponible» tras un despliegue y que no se recargue sola.
 
 ## Recursos offline (workflow manual)
 
