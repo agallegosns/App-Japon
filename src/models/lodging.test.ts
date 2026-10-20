@@ -7,7 +7,7 @@ function hotel(id: string, from: string | null, to: string | null, status: Booki
     id, name: id, category: 'alojamiento', status, start: null, arrival: null,
     checkIn: from ? { date: from, time: '15:00', tz: 'Asia/Tokyo' } : null,
     checkOut: to ? { date: to, time: '11:00', tz: 'Asia/Tokyo' } : null,
-    address: '', addressJa: '', legs: [], price: null, phone: '', contact: '', notes: '', links: [],
+    address: '', legs: [], guests: 2, taxes: [], price: null, phone: '', contact: '', notes: '', links: [],
     sortAt: null, createdAt: 1, updatedAt: 1,
   };
 }

@@ -2,9 +2,12 @@ import { Plane, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { airportFromLabel } from '../../models/airports';
+import { amountToText, counterpart, formatMoney, isConvertible, parseAmount } from '../../models/currency';
+import { newId } from '../../models/id';
+import { nightsBetween, summarizeTaxes, taxTotal, totalIn } from '../../models/taxes';
 import { emptyLeg, formatMinutes, layoverMinutes, routeText } from '../../models/flights';
 import { BOOKING_STATUS_LABEL, CATEGORY_LABEL } from '../../models/labels';
-import { BOOKING_CATEGORIES, BOOKING_STATUSES, DEFAULT_TZ, type BookingCategory, type FlightLeg } from '../../models/types';
+import { BOOKING_CATEGORIES, BOOKING_STATUSES, DEFAULT_TZ, type BookingCategory, type BookingTax, type FlightLeg, type TaxBasis } from '../../models/types';
 import { createBooking, emptyBooking, getBooking, updateBooking, validateBooking, type BookingInput } from '../../storage/bookings';
 import { getDb } from '../../storage/db';
 import { getTrip } from '../../storage/trips';
@@ -12,14 +15,31 @@ import { ValidationError, type FieldErrors } from '../../storage/validation';
 import { Button } from '../../ui/Button';
 import { Card } from '../../ui/Card';
 import { DateTimeField } from '../../ui/DateTimeField';
-import { SelectField, TextArea, TextField } from '../../ui/Field';
+import { Checkbox, TextArea, TextField } from '../../ui/Field';
 import { Notice } from '../../ui/Notice';
 import { PageHeader } from '../../ui/PageHeader';
+import { RateLine } from '../../ui/Rate';
+import { Segmented } from '../../ui/Segmented';
 import { AirportField } from './AirportField';
 import { ErrorState, LoadingState, errorMessage } from '../../ui/States';
 import { useToast } from '../../ui/Toast';
+import { useFxRate } from '../../storage/useFxRate';
+import { CategoryIcon } from './categoryIcon';
 
-const CURRENCIES = ['EUR', 'JPY', 'USD', 'GBP'];
+const PRICE_CURRENCIES = [
+  { value: 'EUR', label: '€ EUR' },
+  { value: 'JPY', label: '¥ JPY' },
+  { value: 'USD', label: '$ USD' },
+  { value: 'GBP', label: '£ GBP' },
+];
+const TAX_CURRENCIES = [
+  { value: 'JPY', label: '¥ yenes' },
+  { value: 'EUR', label: '€ euros' },
+];
+const BASIS_OPTIONS: { value: TaxBasis; label: string }[] = [
+  { value: 'persona_noche', label: 'Por persona y noche' },
+  { value: 'total', label: 'Importe total' },
+];
 
 function startLabel(c: BookingCategory): string {
   switch (c) {
@@ -52,6 +72,9 @@ export function BookingFormPage() {
   });
   const [priceText, setPriceText] = useState('');
   const [currency, setCurrency] = useState('EUR');
+  const [guestsText, setGuestsText] = useState('2');
+  const [taxTexts, setTaxTexts] = useState<Record<string, string>>({});
+  const { rate, refreshing, refresh } = useFxRate();
   const [errors, setErrors] = useState<FieldErrors>({});
   const [saving, setSaving] = useState(false);
 
@@ -70,8 +93,10 @@ export function BookingFormPage() {
               ? [{ ...emptyLeg(), depart: booking.start, arrive: booking.arrival }]
               : booking.legs;
           setForm({ ...input, legs });
+          setGuestsText(String(booking.guests));
+          setTaxTexts(Object.fromEntries(booking.taxes.map((t) => [t.id, amountToText(t.amount, t.currency)])));
           if (booking.price) {
-            setPriceText(String(booking.price.amount).replace('.', ','));
+            setPriceText(amountToText(booking.price.amount, booking.price.currency));
             setCurrency(booking.price.currency);
           }
         }
@@ -87,13 +112,16 @@ export function BookingFormPage() {
     let price: BookingInput['price'] = null;
     const priceErrors: FieldErrors = {};
     if (priceText.trim()) {
-      const amount = Number(priceText.replace(/\s/g, '').replace(',', '.'));
-      if (!Number.isFinite(amount)) priceErrors.price = 'Escribe el precio como número (p. ej. 120,50).';
+      const amount = parseAmount(priceText);
+      if (Number.isNaN(amount)) priceErrors.price = 'Escribe el precio como número (p. ej. 120,50 o 18.500).';
       else price = { amount, currency };
     }
+    const taxes = form.taxes.map((t) => ({ ...t, amount: parseAmount(taxTexts[t.id] ?? String(t.amount)) }));
+    const guests = Number(guestsText);
     const autoName = form.category === 'vuelo' ? routeText(form.legs) : '';
-    const input: BookingInput = { ...form, name: form.name.trim() || autoName, price };
+    const input: BookingInput = { ...form, name: form.name.trim() || autoName, price, taxes, guests };
     const errs = { ...validateBooking(input), ...priceErrors };
+    if (Number.isNaN(guests) && c === 'alojamiento') errs.guests = 'Las personas deben ser un número entre 1 y 30.';
     setErrors(errs);
     if (Object.keys(errs).length) {
       toast.error('Revisa los campos marcados.');
@@ -114,6 +142,19 @@ export function BookingFormPage() {
 
   const c = form.category;
   const isTransport = c === 'vuelo' || c === 'transporte';
+  const nights = nightsBetween(form.checkIn, form.checkOut);
+  const setTax = (i: number, patch: Partial<BookingTax>) =>
+    setForm((f) => ({ ...f, taxes: f.taxes.map((t, j) => (j === i ? { ...t, ...patch } : t)) }));
+  const removeTax = (i: number) => setForm((f) => ({ ...f, taxes: f.taxes.filter((_, j) => j !== i) }));
+  const addTax = (base: Pick<BookingTax, 'name' | 'currency' | 'basis'>) => {
+    const t: BookingTax = { id: newId(), amount: 0, paid: false, ...base };
+    setForm((f) => ({ ...f, taxes: [...f.taxes, t] }));
+    setTaxTexts((x) => ({ ...x, [t.id]: '' }));
+  };
+  const parsedTaxes = form.taxes.map((t) => ({ ...t, amount: parseAmount(taxTexts[t.id] ?? '') })).filter((t) => !Number.isNaN(t.amount));
+  const taxSummary = summarizeTaxes(parsedTaxes, Number(guestsText) || 0, nights);
+  const taxEur = totalIn(taxSummary.total, 'EUR', rate);
+  const taxJpy = totalIn(taxSummary.total, 'JPY', rate);
   const setLeg = (i: number, patch: Partial<FlightLeg>) =>
     setForm((f) => ({ ...f, legs: f.legs.map((l, j) => (j === i ? { ...l, ...patch } : l)) }));
 
@@ -125,14 +166,26 @@ export function BookingFormPage() {
       {typeof state === 'object' && <ErrorState error={state.error} />}
       {state === 'ok' && (
         <form onSubmit={submit} className="stack-lg" noValidate>
-          <Card>
+          <Card title="¿Qué vas a guardar?">
             <div className="stack">
-              <SelectField
-                label="Categoría"
-                value={c}
-                options={BOOKING_CATEGORIES.map((v) => ({ value: v, label: CATEGORY_LABEL[v] }))}
-                onChange={(v) => setForm((f) => ({ ...f, category: v, legs: v === 'vuelo' && f.legs.length === 0 ? [emptyLeg()] : f.legs }))}
-              />
+              <div className="field">
+                <span className="field-label" id="cat-label">Tipo de reserva</span>
+                <div className="cat-grid" role="radiogroup" aria-labelledby="cat-label">
+                  {BOOKING_CATEGORIES.map((v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      role="radio"
+                      aria-checked={c === v}
+                      className={`cat-tile${c === v ? ' is-active' : ''}`}
+                      onClick={() => setForm((f) => ({ ...f, category: v, legs: v === 'vuelo' && f.legs.length === 0 ? [emptyLeg()] : f.legs }))}
+                    >
+                      <CategoryIcon category={v} size={24} />
+                      <span>{CATEGORY_LABEL[v]}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
               <TextField
                 label="Nombre"
                 value={form.name}
@@ -141,12 +194,15 @@ export function BookingFormPage() {
                 placeholder={c === 'vuelo' ? 'Opcional: si lo dejas vacío se usa la ruta' : undefined}
                 autoComplete="off"
               />
-              <SelectField
-                label="Estado"
-                value={form.status}
-                options={BOOKING_STATUSES.map((v) => ({ value: v, label: BOOKING_STATUS_LABEL[v] }))}
-                onChange={(v) => set('status', v)}
-              />
+              <div className="field">
+                <span className="field-label" id="status-label">Estado</span>
+                <Segmented<BookingInput['status']>
+                  label="Estado de la reserva"
+                  value={form.status}
+                  onChange={(v) => set('status', v)}
+                  options={BOOKING_STATUSES.map((v) => ({ value: v, label: BOOKING_STATUS_LABEL[v] }))}
+                />
+              </div>
             </div>
           </Card>
 
@@ -277,28 +333,98 @@ export function BookingFormPage() {
 
           <Card title="Lugar y contacto">
             <div className="stack">
-              <TextArea label="Dirección" value={form.address} onChange={(v) => set('address', v)} rows={2} />
-              <TextArea
-                label="Dirección en japonés"
-                value={form.addressJa}
-                onChange={(v) => set('addressJa', v)}
-                rows={2}
-                lang="ja"
-                hint="Para enseñarla a un taxista o en la recepción."
-              />
+              <TextArea label="Dirección" value={form.address} onChange={(v) => set('address', v)} rows={2} hint="Con ella podrás abrir «Cómo llegar» en Google Maps." />
               <TextField label="Teléfono" type="tel" value={form.phone} onChange={(v) => set('phone', v)} autoComplete="off" />
               <TextField label="Contacto" value={form.contact} onChange={(v) => set('contact', v)} autoComplete="off" />
             </div>
           </Card>
 
-          <Card title="Precio y notas">
+          <Card title="Precio">
             <div className="stack">
-              <div className="input-row">
-                <TextField label="Precio (opcional)" inputMode="decimal" value={priceText} onChange={setPriceText} error={errors.price} autoComplete="off" />
-                <SelectField label="Moneda" value={currency} options={CURRENCIES.map((v) => ({ value: v, label: v }))} onChange={setCurrency} />
-              </div>
-              <TextArea label="Notas" value={form.notes} onChange={(v) => set('notes', v)} rows={3} />
+              <Segmented label="Moneda del precio" value={currency} onChange={setCurrency} options={PRICE_CURRENCIES} />
+              <TextField
+                label="Importe (opcional)"
+                inputMode="decimal"
+                value={priceText}
+                onChange={setPriceText}
+                error={errors.price}
+                autoComplete="off"
+                placeholder={currency === 'JPY' ? '18.500' : '120,50'}
+              />
+              <PriceConversion text={priceText} currency={currency} rate={rate} refreshing={refreshing} onRefresh={() => void refresh()} />
             </div>
+          </Card>
+
+          {c === 'alojamiento' && (
+            <Card title="Tasas del alojamiento">
+              <div className="stack">
+                <p className="muted small">
+                  Tasa turística, de limpieza u otras. En Japón suelen pagarse en el propio alojamiento; mira tu reserva para confirmarlo.
+                </p>
+                <TextField label="Personas alojadas" inputMode="numeric" value={guestsText} onChange={setGuestsText} error={errors.guests} autoComplete="off" />
+                <p className="muted small">
+                  Noches: {nights > 0 ? nights : 'rellena el check-in y el check-out'}
+                </p>
+                {form.taxes.map((t, i) => {
+                  const amount = parseAmount(taxTexts[t.id] ?? '');
+                  const total = Number.isNaN(amount) ? null : taxTotal({ ...t, amount }, Number(guestsText) || 0, nights);
+                  const other = total === null ? null : counterpart({ amount: total, currency: t.currency }, rate);
+                  return (
+                    <div key={t.id} className="tax-row">
+                      <TextField
+                        label={`Tasa ${i + 1}: nombre`}
+                        value={t.name}
+                        onChange={(v) => setTax(i, { name: v })}
+                        error={errors[`taxes.${i}.name`]}
+                        autoComplete="off"
+                      />
+                      <Segmented label={`Tasa ${i + 1}: moneda`} value={t.currency} onChange={(v) => setTax(i, { currency: v })} options={TAX_CURRENCIES} />
+                      <TextField
+                        label={`Tasa ${i + 1}: importe`}
+                        inputMode="decimal"
+                        value={taxTexts[t.id] ?? ''}
+                        onChange={(v) => setTaxTexts((x) => ({ ...x, [t.id]: v }))}
+                        error={errors[`taxes.${i}.amount`]}
+                        autoComplete="off"
+                      />
+                      <Segmented<TaxBasis> label={`Tasa ${i + 1}: cómo se cobra`} value={t.basis} onChange={(v) => setTax(i, { basis: v })} options={BASIS_OPTIONS} />
+                      {total !== null && (
+                        <p className="tax-total">
+                          Total: <strong>{formatMoney(total, t.currency)}</strong>
+                          {other && <span className="muted"> ≈ {formatMoney(other.amount, other.currency)}</span>}
+                        </p>
+                      )}
+                      <Checkbox label="Ya está pagada" checked={t.paid} onChange={(v) => setTax(i, { paid: v })} />
+                      <Button variant="ghost" small icon={<Trash2 size={16} />} onClick={() => removeTax(i)}>
+                        Quitar tasa
+                      </Button>
+                    </div>
+                  );
+                })}
+                <div className="input-row">
+                  <Button variant="secondary" icon={<Plus size={18} />} onClick={() => addTax({ name: 'Tasa de alojamiento', currency: 'JPY', basis: 'persona_noche' })}>
+                    Tasa de alojamiento
+                  </Button>
+                  <Button variant="secondary" icon={<Plus size={18} />} onClick={() => addTax({ name: '', currency: 'JPY', basis: 'total' })}>
+                    Otra tasa
+                  </Button>
+                </div>
+                {taxSummary.total.length > 0 && (
+                  <div className="tax-summary">
+                    <p>
+                      <strong>Total de tasas:</strong> {taxSummary.total.map((m) => formatMoney(m.amount, m.currency)).join(' + ')}
+                      {taxEur !== null && taxJpy !== null && taxSummary.total.some((m) => m.currency !== 'EUR') && (
+                        <span className="muted"> ≈ {formatMoney(taxEur, 'EUR')}</span>
+                      )}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
+
+          <Card title="Notas">
+            <TextArea label="Notas" value={form.notes} onChange={(v) => set('notes', v)} rows={3} />
           </Card>
 
           <Card title="Enlaces externos">
@@ -336,11 +462,32 @@ export function BookingFormPage() {
 
           {!id && <Notice tone="info">Los adjuntos (PDF o capturas) se añaden desde la ficha de la reserva, después de guardarla. Por seguridad no hay campo de localizador ni de códigos QR.</Notice>}
 
-          <Button type="submit" variant="primary" block disabled={saving}>
-            {saving ? 'Guardando…' : 'Guardar reserva'}
-          </Button>
+          <div className="form-actions">
+            <Button type="submit" variant="primary" block disabled={saving}>
+              {saving ? 'Guardando…' : 'Guardar reserva'}
+            </Button>
+          </div>
         </form>
       )}
     </>
+  );
+}
+
+function PriceConversion({ text, currency, rate, refreshing, onRefresh }: { text: string; currency: string; rate: ReturnType<typeof useFxRate>['rate']; refreshing: boolean; onRefresh: () => void }) {
+  const amount = parseAmount(text);
+  const other = Number.isNaN(amount) || !isConvertible(currency) ? null : counterpart({ amount, currency }, rate);
+  return (
+    <div className="price-conversion" aria-live="polite">
+      {other ? (
+        <p className="price-conversion-main">
+          {formatMoney(amount, currency)} <span className="muted">≈</span> <strong>{formatMoney(other.amount, other.currency)}</strong>
+        </p>
+      ) : (
+        <p className="muted small">
+          {isConvertible(currency) ? 'Escribe el importe y verás aquí su equivalente en euros o yenes.' : 'Solo se convierten euros y yenes.'}
+        </p>
+      )}
+      <RateLine rate={rate} refreshing={refreshing} onRefresh={onRefresh} />
+    </div>
   );
 }

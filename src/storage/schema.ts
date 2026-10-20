@@ -45,6 +45,23 @@ export const SCHEMA_HISTORY: SchemaVersion[] = [
         .delete();
     },
   },
+  {
+    // v3: actividades de todo el día (allDay), tasas de alojamiento (guests, taxes) y se elimina la
+    // dirección en japonés (decisión del usuario).
+    version: 3,
+    stores: {},
+    upgrade: async (tx) => {
+      await tx.table('bookings').toCollection().modify((b: Record<string, unknown>) => {
+        delete b.addressJa;
+        if (typeof b.guests !== 'number') b.guests = 2;
+        if (!Array.isArray(b.taxes)) b.taxes = [];
+      });
+      await tx.table('activities').toCollection().modify((a: Record<string, unknown>) => {
+        delete a.addressJa;
+        if (typeof a.allDay !== 'boolean') a.allDay = false;
+      });
+    },
+  },
 ];
 
 export const CURRENT_SCHEMA_VERSION = SCHEMA_HISTORY[SCHEMA_HISTORY.length - 1]?.version ?? 1;

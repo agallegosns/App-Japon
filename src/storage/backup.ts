@@ -157,12 +157,21 @@ export function parseBackup(bytes: Uint8Array): ParsedBackup {
     manifest: manifest as unknown as BackupManifest,
     trips: arr(data, 'trips') as unknown as Trip[],
     days: (arr(data, 'days') as unknown as Day[]).map((d) => ({ ...d, lodgingId: d.lodgingId ?? null })),
-    bookings: (arr(data, 'bookings') as unknown as (Booking & { confirmationCode?: string })[]).map((b) => {
-      const { confirmationCode: _removed, ...rest } = b;
-      void _removed;
-      return { ...rest, legs: Array.isArray(rest.legs) ? rest.legs : [] };
+    bookings: (arr(data, 'bookings') as unknown as (Booking & { confirmationCode?: string; addressJa?: string })[]).map((b) => {
+      const { confirmationCode: _c, addressJa: _j, ...rest } = b;
+      void [_c, _j];
+      return {
+        ...rest,
+        legs: Array.isArray(rest.legs) ? rest.legs : [],
+        guests: typeof rest.guests === 'number' ? rest.guests : 2,
+        taxes: Array.isArray(rest.taxes) ? rest.taxes : [],
+      };
     }),
-    activities: arr(data, 'activities') as unknown as Activity[],
+    activities: (arr(data, 'activities') as unknown as (Activity & { addressJa?: string })[]).map((a) => {
+      const { addressJa: _j, ...rest } = a;
+      void _j;
+      return { ...rest, allDay: typeof rest.allDay === 'boolean' ? rest.allDay : false };
+    }),
     attachments,
   };
 }

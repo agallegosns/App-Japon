@@ -2,6 +2,8 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { getDb } from '../storage/db';
+import { FX_KEY } from '../storage/fxRate';
+import { reloadRateFromStorage } from '../storage/useFxRate';
 import { App } from './App';
 
 beforeAll(() => {
@@ -136,5 +138,70 @@ describe('itinerario, día de vuelo y calendario', () => {
     expect(await screen.findByText('Avisos en el iPhone')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Añadir al Calendario del iPhone' }));
     expect(await screen.findByText(/Aún no hay actividades ni reservas con fecha/)).toBeInTheDocument();
+  });
+});
+
+describe('yenes y euros', () => {
+  function fixedRate(eurToJpy = 160) {
+    localStorage.setItem(FX_KEY, JSON.stringify({ eurToJpy, date: '2030-01-01', source: 'manual', fetchedAt: Date.now() }));
+    reloadRateFromStorage();
+  }
+  afterEach(() => {
+    localStorage.clear();
+    reloadRateFromStorage();
+    vi.unstubAllGlobals();
+  });
+
+  it('el conversor calcula en los dos sentidos', async () => {
+    fixedRate(160);
+    window.location.hash = '#/conversor';
+    render(<App />);
+    const yen = await screen.findByLabelText('Yenes (¥)');
+    const eur = screen.getByLabelText('Euros (€)');
+    await userEvent.type(yen, '16000');
+    expect(eur).toHaveValue('100');
+    await userEvent.clear(eur);
+    await userEvent.type(eur, '2,5');
+    expect(yen).toHaveValue('400');
+    await userEvent.clear(yen);
+    expect(eur).toHaveValue('');
+  });
+
+  it('desde el inicio se llega al conversor', async () => {
+    window.location.hash = '#/';
+    render(<App />);
+    expect(await screen.findByRole('link', { name: 'Yenes' })).toHaveAttribute('href', '#/conversor');
+  });
+
+  it('el precio de una reserva muestra el equivalente en la otra moneda', async () => {
+    fixedRate(160);
+    window.location.hash = '#/reservas/nueva';
+    render(<App />);
+    await userEvent.click(await screen.findByRole('button', { name: '¥ JPY' }));
+    await userEvent.type(screen.getByLabelText('Importe (opcional)'), '16.000');
+    expect(await screen.findByText(/100,00 €/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: '€ EUR' }));
+    expect(await screen.findByText(/2\.560.*¥/)).toBeInTheDocument();
+  });
+
+  it('un alojamiento permite añadir tasas y calcula su total', async () => {
+    fixedRate(160);
+    window.location.hash = '#/reservas/nueva?cat=alojamiento';
+    render(<App />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Tasa de alojamiento' }));
+    await userEvent.type(screen.getByLabelText('Tasa 1: importe'), '200');
+    await userEvent.type(screen.getByLabelText('Check-in: fecha'), '2030-05-02');
+    await userEvent.type(screen.getByLabelText('Check-out: fecha'), '2030-05-05');
+    // 200 ¥ × 2 personas × 3 noches = 1.200 ¥ (7,50 € con 160 ¥/€)
+    expect(await screen.findAllByText(/1\.200 ¥/)).not.toHaveLength(0);
+    expect(screen.getAllByText(/7,50 €/).length).toBeGreaterThan(0);
+  });
+
+  it('ya no existe la dirección en japonés', async () => {
+    window.location.hash = '#/reservas/nueva?cat=alojamiento';
+    render(<App />);
+    await screen.findByRole('button', { name: 'Guardar reserva' });
+    expect(screen.queryByLabelText(/japonés/i)).toBeNull();
+    expect(screen.queryByText(/japonés/i)).toBeNull();
   });
 });

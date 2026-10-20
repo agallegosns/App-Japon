@@ -10,8 +10,9 @@ import { getTrip, listDays } from '../../storage/trips';
 import { ValidationError, type FieldErrors } from '../../storage/validation';
 import { Button } from '../../ui/Button';
 import { Card } from '../../ui/Card';
-import { SelectField, TextArea, TextField } from '../../ui/Field';
+import { SelectField, Switch, TextArea, TextField } from '../../ui/Field';
 import { PageHeader } from '../../ui/PageHeader';
+import { Segmented } from '../../ui/Segmented';
 import { ErrorState, LoadingState, errorMessage } from '../../ui/States';
 import { useToast } from '../../ui/Toast';
 
@@ -77,7 +78,7 @@ export function ActivityFormPage() {
     e.preventDefault();
     const extra: FieldErrors = {};
     let durationMin: number | null = null;
-    if (durationText.trim()) {
+    if (!form.allDay && durationText.trim()) {
       durationMin = Number(durationText.trim());
       if (!Number.isInteger(durationMin)) extra.durationMin = 'Escribe los minutos como número entero.';
     }
@@ -120,9 +121,28 @@ export function ActivityFormPage() {
       {typeof state === 'object' && <ErrorState error={state.error} />}
       {state === 'ok' && (
         <form onSubmit={submit} className="stack-lg" noValidate>
-          <Card>
+          <Card title="¿Qué vais a hacer?">
             <div className="stack">
-              <TextField label="Título" value={form.title} onChange={(v) => set('title', v)} error={errors.title} autoComplete="off" />
+              <TextField
+                label="Título"
+                value={form.title}
+                onChange={(v) => set('title', v)}
+                error={errors.title}
+                autoComplete="off"
+                placeholder="Visitar el templo Senso-ji"
+              />
+              <TextField
+                label="Lugar"
+                value={form.location}
+                onChange={(v) => set('location', v)}
+                autoComplete="off"
+                placeholder="Senso-ji, Asakusa"
+              />
+            </div>
+          </Card>
+
+          <Card title="¿Cuándo?">
+            <div className="stack">
               {dayOptions.length > 0 ? (
                 <SelectField
                   label="Día"
@@ -134,52 +154,65 @@ export function ActivityFormPage() {
               ) : (
                 <TextField label="Fecha" type="date" value={form.date} onChange={(v) => set('date', v)} error={errors.date} />
               )}
-              <div className="input-row">
-                <TextField label="Hora inicio" type="time" value={form.startTime ?? ''} onChange={(v) => set('startTime', v || null)} error={errors.startTime} />
-                <TextField label="Hora fin" type="time" value={form.endTime ?? ''} onChange={(v) => set('endTime', v || null)} error={errors.endTime} />
-              </div>
-              <TextField
-                label="Duración estimada (minutos)"
-                inputMode="numeric"
-                value={durationText}
-                onChange={setDurationText}
-                error={errors.durationMin}
-                hint={`Horas en ${form.tz.replace(/_/g, ' ')} (${tzLabel(form.tz)}).`}
+              <Switch
+                label="Todo el día"
+                hint="Sin hora concreta: una excursión, un día de compras…"
+                checked={form.allDay}
+                onChange={(v) => setForm((f) => ({ ...f, allDay: v, ...(v ? { startTime: null, endTime: null } : {}) }))}
               />
-              <SelectField
-                label="Estado"
-                value={form.status}
-                options={ACTIVITY_STATUSES.map((v) => ({ value: v, label: ACTIVITY_STATUS_LABEL[v] }))}
-                onChange={(v) => set('status', v)}
-              />
+              {!form.allDay && (
+                <>
+                  <div className="input-row">
+                    <TextField label="Empieza" type="time" value={form.startTime ?? ''} onChange={(v) => set('startTime', v || null)} error={errors.startTime} />
+                    <TextField label="Termina" type="time" value={form.endTime ?? ''} onChange={(v) => set('endTime', v || null)} error={errors.endTime} />
+                  </div>
+                  <TextField
+                    label="Duración estimada (minutos, opcional)"
+                    inputMode="numeric"
+                    value={durationText}
+                    onChange={setDurationText}
+                    error={errors.durationMin}
+                    hint={`Horas de ${form.tz.replace(/_/g, ' ')} (${tzLabel(form.tz)}).`}
+                  />
+                </>
+              )}
             </div>
           </Card>
 
-          <Card title="Ubicación">
+          <Card title="¿Dónde?">
             <div className="stack">
-              <TextField label="Lugar" value={form.location} onChange={(v) => set('location', v)} autoComplete="off" />
-              <TextArea label="Dirección" value={form.address} onChange={(v) => set('address', v)} rows={2} />
-              <TextArea label="Dirección en japonés" lang="ja" value={form.addressJa} onChange={(v) => set('addressJa', v)} rows={2} />
-              <SelectField<MapKind>
-                label="Referencia de mapa"
-                value={mapKind}
-                options={[
-                  { value: 'none', label: 'Ninguna' },
-                  { value: 'coords', label: 'Coordenadas' },
-                  { value: 'url', label: 'Enlace' },
-                ]}
-                onChange={setMapKind}
-                error={mapKind === 'none' ? undefined : errors.mapRef}
+              <TextArea
+                label="Dirección (opcional)"
+                value={form.address}
+                onChange={(v) => set('address', v)}
+                rows={2}
+                hint="Con el lugar o la dirección podrás abrir «Cómo llegar» en Google Maps."
               />
-              {mapKind === 'coords' && (
-                <div className="input-row">
-                  <TextField label="Latitud" inputMode="decimal" value={lat} onChange={setLat} placeholder="35.0116" />
-                  <TextField label="Longitud" inputMode="decimal" value={lng} onChange={setLng} placeholder="135.7681" />
+              <details className="day-more">
+                <summary>Coordenadas o enlace de mapa (opcional)</summary>
+                <div className="stack" style={{ marginTop: 'var(--sp-2)' }}>
+                  <SelectField<MapKind>
+                    label="Referencia de mapa"
+                    value={mapKind}
+                    options={[
+                      { value: 'none', label: 'Ninguna' },
+                      { value: 'coords', label: 'Coordenadas' },
+                      { value: 'url', label: 'Enlace' },
+                    ]}
+                    onChange={setMapKind}
+                    error={mapKind === 'none' ? undefined : errors.mapRef}
+                  />
+                  {mapKind === 'coords' && (
+                    <div className="input-row">
+                      <TextField label="Latitud" inputMode="decimal" value={lat} onChange={setLat} placeholder="35.0116" />
+                      <TextField label="Longitud" inputMode="decimal" value={lng} onChange={setLng} placeholder="135.7681" />
+                    </div>
+                  )}
+                  {mapKind === 'url' && (
+                    <TextField label="Enlace de mapa" type="url" inputMode="url" autoCapitalize="none" value={mapUrl} onChange={setMapUrl} placeholder="https://" />
+                  )}
                 </div>
-              )}
-              {mapKind === 'url' && (
-                <TextField label="Enlace de mapa" type="url" inputMode="url" autoCapitalize="none" value={mapUrl} onChange={setMapUrl} placeholder="https://" />
-              )}
+              </details>
             </div>
           </Card>
 
@@ -191,13 +224,24 @@ export function ActivityFormPage() {
                 options={[{ value: '', label: 'Ninguna' }, ...bookings.map((b) => ({ value: b.id, label: `${b.name} (${CATEGORY_LABEL[b.category]})` }))]}
                 onChange={(v) => set('bookingId', v || null)}
               />
+              <div className="field">
+                <span className="field-label">Estado</span>
+                <Segmented<ActivityInput['status']>
+                  label="Estado de la actividad"
+                  value={form.status}
+                  onChange={(v) => set('status', v)}
+                  options={ACTIVITY_STATUSES.map((v) => ({ value: v, label: ACTIVITY_STATUS_LABEL[v] }))}
+                />
+              </div>
               <TextArea label="Notas" value={form.notes} onChange={(v) => set('notes', v)} rows={3} />
             </div>
           </Card>
 
-          <Button type="submit" variant="primary" block disabled={saving}>
-            {saving ? 'Guardando…' : 'Guardar actividad'}
-          </Button>
+          <div className="form-actions">
+            <Button type="submit" variant="primary" block disabled={saving}>
+              {saving ? 'Guardando…' : 'Guardar actividad'}
+            </Button>
+          </div>
         </form>
       )}
     </>

@@ -26,12 +26,15 @@ existen en cada iPhone y en las copias de seguridad que hagas.
   Reordena arrastrando el asa o con las flechas. Avisa de solapes de horario y de datos que faltan.
 - **Reservas:** vuelos, alojamientos, restaurantes, entradas, trenes y otros. Los vuelos admiten escalas (un tramo
   por despegue) con buscador de aeropuertos y cálculo de la duración de cada escala. Adjunta PDF o capturas y
-  ábrelos a pantalla completa. «Mostrar dirección en japonés» la enseña en letra muy grande. Por seguridad no
-  hay campo de localizador ni de códigos QR.
+  ábrelos a pantalla completa. Por seguridad no hay campo de localizador ni de códigos QR. El **precio** se
+  convierte solo entre yenes y euros. Los **alojamientos** tienen sección de **tasas** (por persona y noche o importe
+  total, pagadas o por pagar). «Cómo llegar» abre la ruta en Google Maps.
 - **Itinerario:** cada día tiene una cabecera con el número de día, la ciudad y dónde duermes (por check-in/check-out o
   elegido a mano). Los días con vuelo se marcan en rojo con un avión y muestran un bloque «Día de vuelo» con ruta,
   horas locales y escalas. Una **actividad** es algo que hacéis ese día (visita, comida, traslado), con hora y lugar.
   Las reservas del día (restaurantes, entradas, trenes) salen aparte. Botón del calendario arriba a la derecha.
+- **Yenes y euros:** conversor en el inicio (botón «Yenes»). La cotización se actualiza sola con conexión (BCE) y se
+  guarda en el móvil; también puedes escribir la que te aplique tu banco. Sin conexión usa la última guardada.
 - **Inicio:** tarjeta del viaje con cuenta atrás y el **itinerario de hoy** (o del próximo día con plan).
 - **Traductor:** cámara japonés → español. Necesita Internet (la foto no sale del móvil; solo el texto reconocido
   se envía a MyMemory, límite gratuito ≈ 5 000 caracteres/día).

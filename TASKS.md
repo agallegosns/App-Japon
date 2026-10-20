@@ -101,6 +101,20 @@ iPhone · **[pendiente]** sin hacer · **[bloqueado]** depende de algo externo.
 - [pendiente] Traductor más preciso con Google Cloud (Vision + Translation) usando una clave del usuario guardada solo
   en el móvil: pendiente de que el usuario decida si crea la cuenta (requiere tarjeta; cuota gratuita mensual).
 
+## v0.6.0 — Yenes/euros, tasas, todo el día y formularios
+
+- [hecho] Conversor yenes ↔ euros (pantalla propia + acceso en inicio) con cotización guardada, actualización del BCE con
+  conexión y cotización manual. Probado: fórmulas, formato, lectura de importes, guardado y respuestas del servicio simuladas.
+- [hecho] Precio de las reservas y tasas con su equivalente en la otra moneda (formulario y ficha).
+- [hecho] Sección de tasas en alojamientos (personas, noches, por persona y noche / total, pagada, totales y por pagar).
+- [hecho] Actividades de todo el día (modelo, formulario, tarjeta, inicio, calendario).
+- [hecho] «Cómo llegar» con Google Maps (transporte público, a pie, coche) en actividades y alojamientos/restaurantes/entradas.
+- [hecho] Dirección en japonés retirada (interfaz, modelo, copias antiguas y migración v3).
+- [hecho] Formularios de reserva y actividad rediseñados; tarjeta de actividad con botón de hecho y menú de opciones.
+- [dispositivo] Que «Cómo llegar» abra la app de Google Maps en el iPhone con la ruta desde la ubicación actual.
+- [dispositivo] Actualización real de la cotización con conexión (no se pudo probar contra Frankfurter desde el entorno de desarrollo).
+- [pendiente] Borrar a mano `src/features/bookings/JapaneseAddressView.tsx` del repositorio (ya no se usa; GitHub no deja borrar al subir).
+
 ## Siguientes fases (no empezar sin petición)
 
 - [pendiente] Mapa con conexión (marcadores de actividades y alojamientos, ubicación GPS).

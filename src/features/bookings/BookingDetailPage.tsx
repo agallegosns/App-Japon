@@ -3,7 +3,7 @@ import {
   ExternalLink,
   FileText,
   Image as ImageIcon,
-  Languages,
+  Navigation,
   MoreHorizontal,
   Paperclip,
   Pencil,
@@ -12,7 +12,12 @@ import {
 } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { formatCounterpart, formatMoney, counterpart } from '../../models/currency';
 import { formatDateShort, formatLdt } from '../../models/datetime';
+import { nightsBetween, summarizeTaxes, taxTotal, totalIn } from '../../models/taxes';
+import { useFxRate } from '../../storage/useFxRate';
+import { RateLine } from '../../ui/Rate';
+import { bookingDirectionsUrl, TRAVEL_MODE_LABEL, type TravelMode } from '../itinerary/mapLinks';
 import { formatMinutes, layoverMinutes, legMinutes, routeText } from '../../models/flights';
 import { ATTACHMENT_KIND_LABEL, BOOKING_STATUS_LABEL, CATEGORY_LABEL } from '../../models/labels';
 import type { Attachment, AttachmentKind, Booking } from '../../models/types';
@@ -34,7 +39,6 @@ import { StatusTag } from '../../ui/StatusTag';
 import { useToast } from '../../ui/Toast';
 import { AttachmentViewer } from './AttachmentViewer';
 import { CategoryIcon, STATUS_TONE } from './categoryIcon';
-import { JapaneseAddressView } from './JapaneseAddressView';
 
 async function load(id: string) {
   const db = getDb();
@@ -78,9 +82,10 @@ export function BookingDetailPage() {
 function Detail({ booking: b, attachments, activities }: NonNullable<Awaited<ReturnType<typeof load>>>) {
   const navigate = useNavigate();
   const toast = useToast();
-  const [showJa, setShowJa] = useState(false);
+  const { rate, refreshing, refresh } = useFxRate();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const warnings = bookingWarnings(b);
+  const directions = bookingDirectionsUrl(b);
 
   const copy = async (text: string, what: string) => {
     try {
@@ -112,12 +117,6 @@ function Detail({ booking: b, attachments, activities }: NonNullable<Awaited<Ret
         </Notice>
       )}
 
-      {b.addressJa && (
-        <Button variant="primary" block icon={<Languages size={20} />} onClick={() => setShowJa(true)}>
-          Mostrar dirección en japonés
-        </Button>
-      )}
-
       {b.category === 'vuelo' && b.legs.length > 0 ? (
         <FlightLegs booking={b} />
       ) : (
@@ -128,7 +127,7 @@ function Detail({ booking: b, attachments, activities }: NonNullable<Awaited<Ret
         </Card>
       )}
 
-      {(b.address || b.addressJa || b.phone || b.contact) && (
+      {(b.address || b.phone || b.contact) && (
         <Card title="Lugar y contacto">
           <div className="stack">
             {b.address && (
@@ -137,17 +136,6 @@ function Detail({ booking: b, attachments, activities }: NonNullable<Awaited<Ret
                 <p className="break">{b.address}</p>
                 <Button small icon={<Copy size={16} />} onClick={() => copy(b.address, 'Dirección')}>
                   Copiar dirección
-                </Button>
-              </div>
-            )}
-            {b.addressJa && (
-              <div className="stack" style={{ gap: 'var(--sp-1)' }}>
-                <span className="muted small">Dirección en japonés</span>
-                <p lang="ja" className="break" style={{ fontSize: 'var(--fs-lg)' }}>
-                  {b.addressJa}
-                </p>
-                <Button small icon={<Copy size={16} />} onClick={() => copy(b.addressJa, 'Dirección en japonés')}>
-                  Copiar dirección en japonés
                 </Button>
               </div>
             )}
@@ -176,11 +164,19 @@ function Detail({ booking: b, attachments, activities }: NonNullable<Awaited<Ret
         </Card>
       )}
 
+      {directions && <DirectionsButtons booking={b} />}
+
       {b.price && (
         <Card title="Precio">
-          <p>{new Intl.NumberFormat('es-ES', { style: 'currency', currency: b.price.currency }).format(b.price.amount)}</p>
+          <div className="stack">
+            <p className="price-big">{formatMoney(b.price.amount, b.price.currency)}</p>
+            {formatCounterpart(b.price, rate) && <p className="price-other">{formatCounterpart(b.price, rate)}</p>}
+            <RateLine rate={rate} refreshing={refreshing} onRefresh={() => void refresh()} />
+          </div>
         </Card>
       )}
+
+      {b.category === 'alojamiento' && b.taxes.length > 0 && <TaxesCard booking={b} />}
 
       {b.notes && (
         <Card title="Notas">
@@ -234,7 +230,6 @@ function Detail({ booking: b, attachments, activities }: NonNullable<Awaited<Ret
         Eliminar reserva
       </Button>
 
-      {showJa && <JapaneseAddressView name={b.name} address={b.addressJa} onClose={() => setShowJa(false)} />}
       <ConfirmDialog
         open={confirmDelete}
         title="¿Eliminar esta reserva?"
@@ -434,6 +429,78 @@ function FlightLegs({ booking: b }: { booking: Booking }) {
             );
           })}
         </ol>
+      </div>
+    </Card>
+  );
+}
+
+function DirectionsButtons({ booking: b }: { booking: Booking }) {
+  const modes: TravelMode[] = ['transit', 'walking', 'driving'];
+  return (
+    <Card title="Cómo llegar">
+      <div className="stack">
+        {modes.map((m, i) => (
+          <a
+            key={m}
+            className={`btn ${i === 0 ? 'btn-primary' : 'btn-secondary'} btn-block`}
+            href={bookingDirectionsUrl(b, m) ?? undefined}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Navigation size={18} aria-hidden="true" /> {TRAVEL_MODE_LABEL[m]}
+          </a>
+        ))}
+        <p className="muted small">Abre Google Maps desde donde estés. Necesita conexión.</p>
+      </div>
+    </Card>
+  );
+}
+
+function TaxesCard({ booking: b }: { booking: Booking }) {
+  const { rate } = useFxRate(false);
+  const nights = nightsBetween(b.checkIn, b.checkOut);
+  const summary = summarizeTaxes(b.taxes, b.guests, nights);
+  const eur = totalIn(summary.total, 'EUR', rate);
+  const pendingEur = totalIn(summary.pending, 'EUR', rate);
+  return (
+    <Card title="Tasas">
+      <div className="stack">
+        <p className="muted small">
+          {b.guests} {b.guests === 1 ? 'persona' : 'personas'} · {nights > 0 ? `${nights} ${nights === 1 ? 'noche' : 'noches'}` : 'noches sin calcular (falta el check-in o el check-out)'}
+        </p>
+        <ul className="tax-list">
+          {b.taxes.map((t) => {
+            const total = taxTotal(t, b.guests, nights);
+            const other = counterpart({ amount: total, currency: t.currency }, rate);
+            return (
+              <li key={t.id} className="tax-item">
+                <span className="grow">
+                  <strong>{t.name}</strong>
+                  <span className="muted small" style={{ display: 'block' }}>
+                    {t.basis === 'persona_noche' ? `${formatMoney(t.amount, t.currency)} por persona y noche` : 'Importe total'}
+                  </span>
+                </span>
+                <span className="tax-amount">
+                  {formatMoney(total, t.currency)}
+                  {other && <span className="muted small">≈ {formatMoney(other.amount, other.currency)}</span>}
+                </span>
+                <StatusTag tone={t.paid ? 'success' : 'warning'}>{t.paid ? 'Pagada' : 'Por pagar'}</StatusTag>
+              </li>
+            );
+          })}
+        </ul>
+        <div className="tax-summary">
+          <p>
+            <strong>Total:</strong> {summary.total.map((m) => formatMoney(m.amount, m.currency)).join(' + ')}
+            {eur !== null && summary.total.some((m) => m.currency !== 'EUR') && <span className="muted"> ≈ {formatMoney(eur, 'EUR')}</span>}
+          </p>
+          {summary.pending.length > 0 && (
+            <p>
+              <strong>Por pagar:</strong> {summary.pending.map((m) => formatMoney(m.amount, m.currency)).join(' + ')}
+              {pendingEur !== null && summary.pending.some((m) => m.currency !== 'EUR') && <span className="muted"> ≈ {formatMoney(pendingEur, 'EUR')}</span>}
+            </p>
+          )}
+        </div>
       </div>
     </Card>
   );

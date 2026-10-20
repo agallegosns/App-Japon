@@ -13,7 +13,7 @@ function Row({ e }: { e: TimelineEntry }) {
   return (
     <li>
       <Link to={e.to} className={`plan-row kind-${e.kind}${e.done ? ' is-done' : ''}`}>
-        <span className="plan-time">{e.time ?? '--:--'}</span>
+        <span className={`plan-time${e.allDay ? ' is-allday' : ''}`}>{e.allDay ? 'Todo el día' : (e.time ?? '--:--')}</span>
         <span className="plan-dot" aria-hidden="true">
           {e.kind === 'flight' ? <Plane size={14} /> : e.kind === 'booking' ? <Ticket size={14} /> : null}
         </span>

@@ -54,6 +54,22 @@ FIXTURES[2] = {
   meta: FIXTURES[1]!.meta!,
 };
 
+// La versión 3 añade tasas y «todo el día» y ya no guarda la dirección en japonés.
+function withoutJa(row: Record<string, unknown>): Record<string, unknown> {
+  const copy = { ...row };
+  delete copy.addressJa;
+  return copy;
+}
+
+FIXTURES[3] = {
+  trips: FIXTURES[2]!.trips!,
+  days: FIXTURES[2]!.days!,
+  bookings: FIXTURES[2]!.bookings!.map((b) => ({ ...withoutJa(b), guests: 2, taxes: [] })),
+  attachments: FIXTURES[2]!.attachments!,
+  activities: FIXTURES[2]!.activities!.map((a) => ({ ...withoutJa(a), allDay: false })),
+  meta: FIXTURES[2]!.meta!,
+};
+
 describe('migraciones de IndexedDB', () => {
   it('cada versión publicada tiene fixture y las versiones son crecientes', () => {
     const versions = SCHEMA_HISTORY.map((v) => v.version);
@@ -80,6 +96,10 @@ describe('migraciones de IndexedDB', () => {
       const hotel = await db.bookings.get('b1');
       expect(hotel).toMatchObject({ name: 'Hotel', legs: [] });
       expect(hotel).not.toHaveProperty('confirmationCode');
+      expect(hotel).not.toHaveProperty('addressJa');
+      expect(hotel).toMatchObject({ guests: 2, taxes: [] });
+      expect((await db.activities.get('x1'))).toMatchObject({ allDay: false });
+      expect((await db.activities.get('x1'))).not.toHaveProperty('addressJa');
       expect((await db.days.get('d1'))?.lodgingId).toBeNull();
       expect((await db.activities.where('[date+order]').equals(['2030-04-01', 0]).first())?.title).toBe('Paseo');
       const att = await db.attachments.get('a1');
@@ -111,6 +131,29 @@ describe('migraciones de IndexedDB', () => {
     expect(hotel?.legs).toEqual([]);
     expect((await db.attachments.toArray()).map((a) => a.id).sort()).toEqual(['a1', 'a3']);
     expect((await db.days.toArray()).every((d) => d.lodgingId === null)).toBe(true);
+    await db.delete();
+  });
+
+  it('v2 → v3: quita la dirección en japonés y rellena personas, tasas y «todo el día»', async () => {
+    const name = `mig-v3-${Math.random()}`;
+    const old = new Dexie(name);
+    old.version(1).stores(SCHEMA_HISTORY[0]!.stores as Record<string, string>);
+    old.version(2).stores({});
+    await old.open();
+    await old.table('trips').bulkAdd(FIXTURES[2]!.trips!);
+    await old.table('bookings').bulkAdd([{ ...FIXTURES[2]!.bookings![0]!, addressJa: '東京都' }]);
+    await old.table('activities').bulkAdd([{ ...FIXTURES[2]!.activities![0]!, addressJa: '東京都' }]);
+    old.close();
+
+    const db = new NihonDB(name);
+    await db.open();
+    expect(db.verno).toBe(3);
+    const hotel = await db.bookings.get('b1');
+    expect(hotel).not.toHaveProperty('addressJa');
+    expect(hotel).toMatchObject({ name: 'Hotel', guests: 2, taxes: [] });
+    const act = await db.activities.get('x1');
+    expect(act).not.toHaveProperty('addressJa');
+    expect(act).toMatchObject({ title: 'Paseo', allDay: false });
     await db.delete();
   });
 });

@@ -126,3 +126,19 @@ export function Checkbox({ label, checked, onChange }: { label: string; checked:
     </div>
   );
 }
+
+/** Interruptor (sí/no) con texto, cómodo de pulsar. */
+export function Switch({ label, hint, checked, onChange }: { label: string; hint?: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label className="switch">
+      <span className="switch-text">
+        <span className="switch-label">{label}</span>
+        {hint && <span className="field-hint">{hint}</span>}
+      </span>
+      <input type="checkbox" role="switch" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      <span className="switch-track" aria-hidden="true">
+        <span className="switch-thumb" />
+      </span>
+    </label>
+  );
+}

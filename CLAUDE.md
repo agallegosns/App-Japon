@@ -50,6 +50,14 @@ comprobar en el iPhone, dale los pasos exactos (qué pulsar y qué debería ver)
 - **Alojamiento por día:** se deduce de check-in/check-out (`src/models/lodging.ts`) y se puede fijar a mano
   (`Day.lodgingId`). Varios destinos en una misma ciudad se modelan como ciudades distintas del viaje.
 
+- **Sin dirección en japonés** (retirada en v0.6.0 a petición del usuario): no reintroducirla. La migración v3 borró
+  los datos. Para llegar a un sitio se usa «Cómo llegar» (Google Maps, `src/features/itinerary/mapLinks.ts`).
+- **Yenes ↔ euros es fundamental.** Todo importe en EUR o JPY muestra su equivalente en la otra moneda
+  (`src/models/currency.ts`, cotización en `src/storage/fxRate.ts`: referencia incluida → BCE vía Frankfurter con
+  conexión → manual). La cotización va en localStorage (no se borra con los datos del viaje). Nunca inventar una
+  cotización: se indica siempre su origen y fecha.
+- **Actividades de todo el día** (`Activity.allDay`): sin horas, sin avisos de hora ni solapes.
+- **Tasas de alojamiento** (`Booking.taxes`, `Booking.guests`): importe total o por persona y noche; pagada/por pagar.
 - **Vocabulario:** en la interfaz se dice «actividad» (nunca «parada»).
 - **Notificaciones:** no hay push (requeriría servidor). Los avisos se hacen exportando un `.ics` al Calendario del
   iPhone (`src/models/ics.ts`, `src/features/settings/calendarActions.ts`). Horas en UTC, sin VTIMEZONE.

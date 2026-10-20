@@ -54,7 +54,7 @@ export function detectOverlaps(activities: Activity[]): Map<string, string[]> {
 export function activityWarnings(a: Activity): string[] {
   if (a.status === 'omitida') return [];
   const out: string[] = [];
-  if (!a.startTime) out.push('Sin hora de inicio');
+  if (!a.startTime && !a.allDay) out.push('Sin hora de inicio');
   if (!a.location && !a.address && !a.mapRef) out.push('Sin ubicación');
   return out;
 }
@@ -81,13 +81,12 @@ export function bookingWarnings(b: Booking): string[] {
       if (!b.checkIn) out.push('Falta el check-in');
       if (!b.checkOut) out.push('Falta el check-out');
       if (!b.address) out.push('Falta la dirección');
-      if (!b.addressJa) out.push('Falta la dirección en japonés');
       break;
     case 'restaurante':
     case 'entrada':
       if (!b.start) out.push('Falta la fecha');
       else if (!b.start.time) out.push('Falta la hora');
-      if (!b.address && !b.addressJa) out.push('Falta la dirección');
+      if (!b.address) out.push('Falta la dirección');
       break;
     case 'otro':
       break;

@@ -7,12 +7,12 @@ function act(id: string, patch: Partial<Activity>): Activity {
     id,
     title: id,
     date: '2030-04-01',
+    allDay: false,
     startTime: null,
     endTime: null,
     tz: 'Asia/Tokyo',
     location: 'Lugar',
     address: '',
-    addressJa: '',
     durationMin: null,
     notes: '',
     bookingId: null,
@@ -75,12 +75,22 @@ describe('avisos de datos que faltan', () => {
       checkIn: { date: '2030-04-01', time: '15:00', tz: 'Asia/Tokyo' },
       checkOut: null,
       address: 'Calle',
-      addressJa: '',
       legs: [],
     } as unknown as Booking;
     expect(bookingWarnings(b)).toEqual([
       'Falta el check-out',
-      'Falta la dirección en japonés',
     ]);
+  });
+});
+
+describe('actividades de todo el día', () => {
+  it('no avisan de que falta la hora de inicio', () => {
+    expect(activityWarnings(act('a', { location: 'Nikko' }))).toContain('Sin hora de inicio');
+    expect(activityWarnings(act('a', { location: 'Nikko', allDay: true }))).not.toContain('Sin hora de inicio');
+  });
+
+  it('no se solapan con otras actividades', () => {
+    const list = [act('dia', { allDay: true }), act('cena', { startTime: '20:00', endTime: '21:00' })];
+    expect(detectOverlaps(list).size).toBe(0);
   });
 });

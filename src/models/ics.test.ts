@@ -3,12 +3,10 @@ import { activityEvents, bookingEvents, buildIcs, escapeText, foldLine, tripIcs,
 import type { Activity, Booking } from './types';
 
 const act = (patch: Partial<Activity>): Activity => ({
-  id: 'a1', title: 'Templo, Senso-ji', date: '2030-05-03', startTime: '09:30', endTime: '11:00', tz: 'Asia/Tokyo', location: 'Asakusa', address: '',
-  addressJa: '', durationMin: null, notes: 'Llevar efectivo; entrada gratis', bookingId: null, status: 'pendiente', mapRef: null, order: 0, createdAt: 1, updatedAt: 1, ...patch,
+  id: 'a1', title: 'Templo, Senso-ji', date: '2030-05-03', allDay: false, startTime: '09:30', endTime: '11:00', tz: 'Asia/Tokyo', location: 'Asakusa', address: '', durationMin: null, notes: 'Llevar efectivo; entrada gratis', bookingId: null, status: 'pendiente', mapRef: null, order: 0, createdAt: 1, updatedAt: 1, ...patch,
 });
 const booking = (patch: Partial<Booking>): Booking => ({
-  id: 'b1', name: 'Hotel', category: 'alojamiento', status: 'confirmada', start: null, arrival: null, checkIn: null, checkOut: null, address: 'Shinjuku',
-  addressJa: '', legs: [], price: null, phone: '', contact: '', notes: '', links: [], sortAt: 1, createdAt: 1, updatedAt: 1, ...patch,
+  id: 'b1', name: 'Hotel', category: 'alojamiento', status: 'confirmada', start: null, arrival: null, checkIn: null, checkOut: null, address: 'Shinjuku', legs: [], guests: 2, taxes: [], price: null, phone: '', contact: '', notes: '', links: [], sortAt: 1, createdAt: 1, updatedAt: 1, ...patch,
 });
 
 describe('calendario .ics', () => {
@@ -24,6 +22,12 @@ describe('calendario .ics', () => {
     expect(utcStamp(e!.start as number)).toBe('20300503T003000Z'); // 09:30 JST = 00:30 UTC
     expect(utcStamp(e!.end!)).toBe('20300503T020000Z');
     expect(e!.alarmMinutes).toBe(30);
+  });
+
+  it('una actividad marcada «todo el día» es un evento de fecha sin aviso', () => {
+    const [e] = activityEvents([act({ allDay: true, startTime: '10:00' })]);
+    expect(e!.start).toEqual({ date: '2030-05-03' });
+    expect(e!.alarmMinutes).toBe(0);
   });
 
   it('una actividad sin hora es de día completo y las omitidas no se exportan', () => {

@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect } from 'react';
 import { HashRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { ConverterPage } from '../features/converter/ConverterPage';
 import { BookingDetailPage } from '../features/bookings/BookingDetailPage';
 import { BookingFormPage } from '../features/bookings/BookingFormPage';
 import { BookingsPage } from '../features/bookings/BookingsPage';
@@ -43,6 +44,7 @@ export function AppRoutes() {
       <Route path="/reservas/nueva" element={<BookingFormPage />} />
       <Route path="/reservas/:id" element={<BookingDetailPage />} />
       <Route path="/reservas/:id/editar" element={<BookingFormPage />} />
+      <Route path="/conversor" element={<ConverterPage />} />
       <Route path="/ajustes" element={<SettingsPage />} />
       <Route path="/sin-conexion" element={<OfflinePrepPage />} />
       <Route

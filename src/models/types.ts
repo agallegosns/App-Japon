@@ -72,6 +72,20 @@ export interface FlightLeg {
   arrive: LocalDateTime | null;
 }
 
+export const TAX_BASES = ['total', 'persona_noche'] as const;
+export type TaxBasis = (typeof TAX_BASES)[number];
+
+/** Una tasa de un alojamiento. `persona_noche`: el importe se multiplica por personas y noches. */
+export interface BookingTax {
+  id: string;
+  name: string;
+  amount: number;
+  currency: string;
+  basis: TaxBasis;
+  /** Ya pagada (si no, hay que pagarla, normalmente en el propio alojamiento). */
+  paid: boolean;
+}
+
 export interface Booking {
   id: string;
   name: string;
@@ -84,10 +98,13 @@ export interface Booking {
   checkIn: LocalDateTime | null;
   checkOut: LocalDateTime | null;
   address: string;
-  addressJa: string;
   /** Tramos de un vuelo con escalas. Vacío en el resto de categorías. */
   legs: FlightLeg[];
   price: Money | null;
+  /** Personas alojadas (para las tasas por persona y noche). Solo alojamientos. */
+  guests: number;
+  /** Tasas del alojamiento (tasa turística, limpieza…). Vacío en el resto de categorías. */
+  taxes: BookingTax[];
   phone: string;
   contact: string;
   notes: string;
@@ -125,12 +142,13 @@ export interface Activity {
   /** AAAA-MM-DD */
   date: string;
   /** HH:mm o null */
+  /** Actividad de todo el día: no tiene hora de inicio ni de fin. */
+  allDay: boolean;
   startTime: string | null;
   endTime: string | null;
   tz: string;
   location: string;
   address: string;
-  addressJa: string;
   durationMin: number | null;
   notes: string;
   bookingId: string | null;

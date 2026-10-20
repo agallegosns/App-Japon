@@ -81,6 +81,8 @@ export interface TimelineEntry {
   time: string | null;
   title: string;
   subtitle: string;
+  /** Actividad de todo el día. */
+  allDay?: boolean;
   /** Ruta de la app a la que lleva la entrada. */
   to: string;
   done: boolean;
@@ -119,12 +121,13 @@ export function dayTimeline(date: string, activities: Activity[], bookings: Book
     entries.push({
       id: a.id,
       kind: 'activity',
-      time: a.startTime,
+      time: a.allDay ? null : a.startTime,
+      allDay: a.allDay,
       title: a.title,
       subtitle: [a.endTime ? `hasta ${a.endTime}` : '', a.location].filter(Boolean).join(' · '),
       to: `/itinerario?fecha=${date}`,
       done: a.status === 'hecha',
-      sort: a.startTime ? zonedToEpoch(date, a.startTime, a.tz) : NO_TIME + a.order,
+      sort: a.allDay ? -NO_TIME + a.order : a.startTime ? zonedToEpoch(date, a.startTime, a.tz) : NO_TIME + a.order,
     });
   }
 

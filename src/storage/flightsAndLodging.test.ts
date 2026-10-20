@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { emptyLeg } from '../models/flights';
 import { bookingWarnings } from '../models/warnings';
 import { BACKUP_FORMAT, BACKUP_FORMAT_VERSION, parseBackup } from './backup';
+import { createActivity, emptyActivity, getActivity } from './activities';
 import { createBooking, deleteBooking, emptyBooking, getBooking, updateBooking } from './bookings';
 import type { NihonDB } from './db';
 import { CURRENT_SCHEMA_VERSION } from './schema';
@@ -122,7 +123,7 @@ describe('copias antiguas', () => {
         JSON.stringify({
           trips: [],
           days: [{ id: 'd1', tripId: 't', date: '2030-04-01', city: '' }],
-          bookings: [{ id: 'b1', name: 'Hotel', category: 'alojamiento', status: 'confirmada', confirmationCode: 'SECRETO', createdAt: 1, updatedAt: 1 }],
+          bookings: [{ id: 'b1', name: 'Hotel', category: 'alojamiento', status: 'confirmada', confirmationCode: 'SECRETO', addressJa: '東京都', createdAt: 1, updatedAt: 1 }],
           activities: [],
           attachments: [
             { id: 'a1', bookingId: 'b1', kind: 'code', name: 'qr.png', mime: 'image/png', size: 1, createdAt: 1, path: 'attachments/a1' },
@@ -137,8 +138,53 @@ describe('copias antiguas', () => {
     expect(parsed.attachments.map((a) => a.id)).toEqual(['a2']);
     expect(parsed.bookings[0]).not.toHaveProperty('confirmationCode');
     expect(parsed.bookings[0]?.legs).toEqual([]);
+    expect(parsed.bookings[0]).not.toHaveProperty('addressJa');
+    expect(parsed.bookings[0]).toMatchObject({ guests: 2, taxes: [] });
     expect(parsed.days[0]?.lodgingId).toBeNull();
     expect(JSON.stringify(parsed)).not.toContain('SECRETO');
-    expect(CURRENT_SCHEMA_VERSION).toBe(2);
+    expect(CURRENT_SCHEMA_VERSION).toBe(3);
+  });
+});
+
+describe('tasas de alojamiento', () => {
+  const tax = { id: 't1', name: ' Tasa de alojamiento ', amount: 200, currency: 'JPY', basis: 'persona_noche' as const, paid: false };
+
+  it('se guardan en alojamientos con el nombre limpio y se recuperan', async () => {
+    db = freshDb();
+    const b = await createBooking(db, { ...emptyBooking('alojamiento'), name: 'Hotel', guests: 3, taxes: [tax] });
+    const read = await getBooking(db, b.id);
+    expect(read?.guests).toBe(3);
+    expect(read?.taxes).toEqual([{ ...tax, name: 'Tasa de alojamiento' }]);
+  });
+
+  it('solo existen en los alojamientos', async () => {
+    db = freshDb();
+    const b = await createBooking(db, { ...emptyBooking('restaurante'), name: 'Cena', taxes: [tax] });
+    expect(b.taxes).toEqual([]);
+  });
+
+  it('se validan: nombre, importe, moneda, tipo y personas', async () => {
+    db = freshDb();
+    const base = { ...emptyBooking('alojamiento'), name: 'Hotel' };
+    await expect(createBooking(db, { ...base, taxes: [{ ...tax, name: '  ' }] })).rejects.toBeInstanceOf(ValidationError);
+    await expect(createBooking(db, { ...base, taxes: [{ ...tax, amount: -5 }] })).rejects.toBeInstanceOf(ValidationError);
+    await expect(createBooking(db, { ...base, taxes: [{ ...tax, amount: Number.NaN }] })).rejects.toBeInstanceOf(ValidationError);
+    await expect(createBooking(db, { ...base, taxes: [{ ...tax, currency: 'yen' }] })).rejects.toBeInstanceOf(ValidationError);
+    await expect(createBooking(db, { ...base, guests: 0 })).rejects.toBeInstanceOf(ValidationError);
+  });
+});
+
+describe('actividades de todo el día', () => {
+  it('no guardan horas ni duración aunque vengan rellenas', async () => {
+    db = freshDb();
+    const a = await createActivity(db, { ...emptyActivity('2030-05-02'), title: 'Excursión a Nikko', allDay: true, startTime: '09:00', endTime: '18:00', durationMin: 540 });
+    const read = await getActivity(db, a.id);
+    expect(read).toMatchObject({ allDay: true, startTime: null, endTime: null, durationMin: null });
+  });
+
+  it('una actividad normal conserva sus horas', async () => {
+    db = freshDb();
+    const a = await createActivity(db, { ...emptyActivity('2030-05-02'), title: 'Cena', startTime: '20:00', endTime: '21:30' });
+    expect(await getActivity(db, a.id)).toMatchObject({ allDay: false, startTime: '20:00', endTime: '21:30' });
   });
 });

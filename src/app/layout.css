@@ -400,7 +400,7 @@
   box-shadow: 0 1px 2px rgba(34, 33, 31, 0.04), 0 6px 18px rgba(34, 33, 31, 0.05);
 }
 .page-header h1 {
-  font-size: 2rem;
+  font-size: clamp(1.45rem, 6.2vw, 2rem);
   font-weight: 800;
   letter-spacing: -0.01em;
 }
@@ -770,4 +770,283 @@
   gap: 4px;
   color: var(--c-text-muted);
   font-size: var(--fs-sm);
+}
+
+/* =====================================================================
+   v0.6: formularios, actividades, precios y tasas
+   ===================================================================== */
+.form-actions {
+  position: sticky;
+  bottom: calc(var(--nav-h) + var(--safe-bottom) + var(--sp-2));
+  z-index: 20;
+  padding: var(--sp-2) 0;
+  background: linear-gradient(180deg, rgba(247, 245, 241, 0), var(--c-bg) 45%);
+}
+.field-label {
+  font-weight: 600;
+}
+
+/* Interruptor */
+.switch {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  min-height: 56px;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  background: var(--c-surface-2);
+  cursor: pointer;
+}
+.switch input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.switch-text {
+  display: flex;
+  flex-direction: column;
+}
+.switch-label {
+  font-weight: 600;
+}
+.switch-track {
+  position: relative;
+  flex: none;
+  width: 52px;
+  height: 32px;
+  border-radius: var(--r-full);
+  background: var(--c-border-strong);
+  transition: background 0.15s;
+}
+.switch-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s;
+}
+.switch input:checked + .switch-track {
+  background: var(--c-accent);
+}
+.switch input:checked + .switch-track .switch-thumb {
+  transform: translateX(20px);
+}
+.switch input:focus-visible + .switch-track {
+  outline: 3px solid var(--c-focus);
+  outline-offset: 2px;
+}
+
+/* Tipo de reserva */
+.cat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-2);
+}
+.cat-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 78px;
+  padding: var(--sp-2);
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--r-md);
+  background: var(--c-surface);
+  color: var(--c-text-muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-align: center;
+}
+.cat-tile.is-active {
+  border-color: var(--c-accent);
+  background: var(--c-accent-soft);
+  color: var(--c-accent);
+}
+
+/* Actividades dentro del día */
+.act-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+}
+.act-row .drag-handle {
+  width: 26px;
+  min-height: 44px;
+  margin-left: -6px;
+}
+.act-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.act-main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.act-check {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 2px solid var(--c-border-strong);
+  border-radius: 50%;
+  background: var(--c-surface);
+  color: transparent;
+}
+.act-check.is-done {
+  border-color: var(--c-success);
+  background: var(--c-success);
+  color: #fff;
+}
+.chip-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-full);
+  background: var(--c-info-soft);
+  color: var(--c-info);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  text-decoration: none;
+}
+.allday-pill {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: var(--r-full);
+  background: var(--c-accent-soft);
+  color: var(--c-accent);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  line-height: 1.2;
+}
+.plan-time.is-allday {
+  font-size: var(--fs-xs);
+  color: var(--c-accent);
+  line-height: 1.2;
+}
+
+/* Precios y conversión */
+.price-big {
+  font-size: var(--fs-2xl);
+  font-weight: 800;
+}
+.price-other {
+  color: var(--c-text-muted);
+  font-size: var(--fs-lg);
+  font-weight: 600;
+}
+.price-conversion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-3);
+  border-radius: var(--r-md);
+  background: var(--c-surface-2);
+}
+.price-conversion-main {
+  font-size: var(--fs-lg);
+}
+.rate-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.rate-refresh {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--c-border-strong);
+  border-radius: 50%;
+  background: var(--c-surface);
+  color: var(--c-text-muted);
+}
+.converter-result {
+  text-align: center;
+  font-size: var(--fs-xl);
+  font-weight: 800;
+}
+
+/* Tasas */
+.tax-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  background: var(--c-surface-2);
+}
+.tax-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.tax-item {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  padding: var(--sp-3) 0;
+  border-top: 1px solid var(--c-border);
+}
+.tax-item:first-child {
+  border-top: 0;
+}
+.tax-amount {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-weight: 700;
+}
+.tax-summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-3);
+  border-radius: var(--r-md);
+  background: var(--c-warning-soft);
+  color: #5e3d00;
+}
+
+/* Accesos rápidos: 5 columnas */
+.quick-links {
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+.quick-link {
+  min-height: 84px;
+  font-size: 0.6875rem;
+}
+.quick-link svg {
+  padding: 7px;
 }

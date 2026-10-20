@@ -6,11 +6,9 @@ import {
   CalendarPlus,
   Check,
   Copy,
-  ExternalLink,
   GripVertical,
-  Languages,
   MapPin,
-  MoreHorizontal,
+  Navigation,
   Pencil,
   Plane,
   Plus,
@@ -22,7 +20,6 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { capitalize, formatDateLong, formatDateShort, formatDayLong, formatDayMonth, nowInZone } from '../../models/datetime';
-import { ACTIVITY_STATUS_LABEL } from '../../models/labels';
 import { bookingsOnDate, flightDates, flightsOnDate } from '../../models/dayEvents';
 import type { Activity, Booking, Day } from '../../models/types';
 import { activityWarnings, detectOverlaps } from '../../models/warnings';
@@ -37,16 +34,13 @@ import { PageHeader } from '../../ui/PageHeader';
 import { ReorderList, type HandleProps } from '../../ui/ReorderList';
 import { Segmented } from '../../ui/Segmented';
 import { EmptyState, ErrorState, LoadingState, errorMessage } from '../../ui/States';
-import { StatusTag, type Tone } from '../../ui/StatusTag';
+import { StatusTag } from '../../ui/StatusTag';
 import { useToast } from '../../ui/Toast';
-import { JapaneseAddressView } from '../bookings/JapaneseAddressView';
 import { shareCalendar } from '../settings/calendarActions';
 import { DayBookings, DayHeader, FlightDayCard } from './DayParts';
-import { externalMapUrl } from './mapLinks';
+import { activityDirectionsUrl } from './mapLinks';
 
 type View = 'dia' | 'lista';
-
-const STATUS_TONE: Record<Activity['status'], Tone> = { pendiente: 'neutral', hecha: 'success', omitida: 'neutral' };
 
 export function ItineraryPage() {
   const result = useAppData();
@@ -302,10 +296,9 @@ function ActivityCard({ activity: a, overlapsWith, booking, index, total, handle
   const toast = useToast();
   const [menu, setMenu] = useState(false);
   const [confirm, setConfirm] = useState(false);
-  const [showJa, setShowJa] = useState(false);
   const warnings = activityWarnings(a);
-  const mapUrl = externalMapUrl(a);
-  const time = a.startTime ? `${a.startTime}${a.endTime ? `–${a.endTime}` : ''}` : 'Sin hora';
+  const route = activityDirectionsUrl(a);
+  const done = a.status === 'hecha';
   const reorderable = handle && onMove && index !== undefined && total !== undefined;
 
   const setStatus = async (status: Activity['status']) => {
@@ -326,67 +319,72 @@ function ActivityCard({ activity: a, overlapsWith, booking, index, total, handle
   };
 
   return (
-    <article className={`card activity-card status-${a.status}${a.status === 'hecha' ? ' is-done' : ''}${a.status === 'omitida' ? ' is-skipped' : ''}`} aria-label={a.title}>
-      <div className="row" style={{ alignItems: 'flex-start' }}>
+    <article className={`card activity-card status-${a.status}${done ? ' is-done' : ''}${a.status === 'omitida' ? ' is-skipped' : ''}`} aria-label={a.title}>
+      <div className="act-row">
         {reorderable && (
           <span className="drag-handle" {...handle} aria-hidden="true" title="Arrastrar para reordenar">
-            <GripVertical size={20} />
+            <GripVertical size={18} />
           </span>
         )}
-        <div className="act-time" aria-label={a.startTime ? `Hora ${time}` : 'Sin hora'}>
-          <strong>{a.startTime ?? '--:--'}</strong>
-          {a.endTime && <span>{a.endTime}</span>}
-        </div>
-        <div className="grow act-body">
-          <p className="activity-title break">{a.title}</p>
-          {(a.location || a.durationMin) && (
-            <p className="act-loc break">
-              {a.location && (
-                <>
-                  <MapPin size={14} aria-hidden="true" /> {a.location}
-                </>
-              )}
-              {a.durationMin ? `${a.location ? ' · ' : ''}${a.durationMin} min` : ''}
-            </p>
-          )}
-          <div className="row-wrap" style={{ marginTop: 4 }}>
-            {a.status !== 'pendiente' && <StatusTag tone={STATUS_TONE[a.status]}>{ACTIVITY_STATUS_LABEL[a.status]}</StatusTag>}
-            {booking && (
-              <Link to={`/reservas/${booking.id}`} className="tag tag-info" style={{ textDecoration: 'none' }}>
-                <Ticket size={12} aria-hidden="true" /> {booking.name}
-              </Link>
-            )}
-            {overlapsWith.length > 0 && (
-              <StatusTag tone="danger" icon={<AlertTriangle size={12} />}>
-                Se solapa con {overlapsWith.map((t) => `«${t}»`).join(', ')}
-              </StatusTag>
-            )}
-            {warnings.map((w) => (
-              <StatusTag key={w} tone="warning">
-                {w}
-              </StatusTag>
-            ))}
-          </div>
-        </div>
-      </div>
-      <div className="activity-actions">
-        <Button
-          variant={a.status === 'hecha' ? 'secondary' : 'ghost'}
-          small
-          icon={a.status === 'hecha' ? <RotateCcw size={18} /> : <Check size={18} />}
-          onClick={() => setStatus(a.status === 'hecha' ? 'pendiente' : 'hecha')}
-        >
-          {a.status === 'hecha' ? 'Deshacer' : 'Hecha'}
-        </Button>
-        <div className="row">
-          {reorderable && (
+        <div className="act-time" aria-label={a.allDay ? 'Todo el día' : a.startTime ? `Hora ${a.startTime}` : 'Sin hora'}>
+          {a.allDay ? (
+            <span className="allday-pill">Todo el día</span>
+          ) : (
             <>
-              <Button variant="ghost" icon={<ArrowUp size={18} />} label={`Subir «${a.title}»`} disabled={index === 0} onClick={() => onMove(a.id, index - 1)} />
-              <Button variant="ghost" icon={<ArrowDown size={18} />} label={`Bajar «${a.title}»`} disabled={index === total - 1} onClick={() => onMove(a.id, index + 1)} />
+              <strong>{a.startTime ?? '--:--'}</strong>
+              {a.endTime && <span>{a.endTime}</span>}
             </>
           )}
-          <Button variant="ghost" icon={<MoreHorizontal size={20} />} label={`Más opciones de «${a.title}»`} onClick={() => setMenu(true)} />
         </div>
+        <div className="act-body">
+          <button type="button" className="act-main" onClick={() => setMenu(true)} aria-label={`Opciones de «${a.title}»`}>
+            <span className="activity-title break">{a.title}</span>
+            {(a.location || a.durationMin) && (
+              <span className="act-loc break">
+                {a.location && (
+                  <>
+                    <MapPin size={14} aria-hidden="true" /> {a.location}
+                  </>
+                )}
+                {a.durationMin ? `${a.location ? ' · ' : ''}${a.durationMin} min` : ''}
+              </span>
+            )}
+          </button>
+          {(route || booking || overlapsWith.length > 0 || warnings.length > 0 || a.status === 'omitida') && (
+            <div className="row-wrap act-chips">
+              {route && (
+                <a className="chip-action" href={route} target="_blank" rel="noopener noreferrer">
+                  <Navigation size={14} aria-hidden="true" /> Cómo llegar
+                </a>
+              )}
+              {a.status === 'omitida' && <StatusTag tone="neutral">Omitida</StatusTag>}
+              {booking && (
+                <Link to={`/reservas/${booking.id}`} className="tag tag-info" style={{ textDecoration: 'none' }}>
+                  <Ticket size={12} aria-hidden="true" /> {booking.name}
+                </Link>
+              )}
+              {overlapsWith.length > 0 && (
+                <StatusTag tone="danger" icon={<AlertTriangle size={12} />}>
+                  Se solapa con {overlapsWith.map((t) => `«${t}»`).join(', ')}
+                </StatusTag>
+              )}
+              {warnings.map((w) => (
+                <StatusTag key={w} tone="warning">
+                  {w}
+                </StatusTag>
+              ))}
+            </div>
+          )}
+        </div>
+        <button
+          type="button"
+          className={`act-check${done ? ' is-done' : ''}`}
+          aria-pressed={done}
+          aria-label={done ? `Marcar «${a.title}» como pendiente` : `Marcar «${a.title}» como hecha`}
+          onClick={() => void setStatus(done ? 'pendiente' : 'hecha')}
+        >
+          <Check size={20} aria-hidden="true" />
+        </button>
       </div>
 
       <BottomSheet open={menu} title={a.title} onClose={() => setMenu(false)}>
@@ -394,20 +392,30 @@ function ActivityCard({ activity: a, overlapsWith, booking, index, total, handle
           <LinkButton to={`/itinerario/${a.id}/editar`} block icon={<Pencil size={18} />}>
             Editar
           </LinkButton>
+          {route && (
+            <>
+              <a className="btn btn-primary btn-block" href={route} target="_blank" rel="noopener noreferrer">
+                <Navigation size={18} aria-hidden="true" /> Cómo llegar (Google Maps)
+              </a>
+              <a className="btn btn-secondary btn-block" href={activityDirectionsUrl(a, 'walking') ?? route} target="_blank" rel="noopener noreferrer">
+                <Navigation size={18} aria-hidden="true" /> Cómo llegar a pie
+              </a>
+            </>
+          )}
+          {reorderable && (
+            <div className="input-row">
+              <Button icon={<ArrowUp size={18} />} disabled={index === 0} onClick={() => { onMove(a.id, index - 1); setMenu(false); }}>
+                Subir
+              </Button>
+              <Button icon={<ArrowDown size={18} />} disabled={index === total - 1} onClick={() => { onMove(a.id, index + 1); setMenu(false); }}>
+                Bajar
+              </Button>
+            </div>
+          )}
           {a.address && (
             <Button block icon={<Copy size={18} />} onClick={() => { void copy(a.address); setMenu(false); }}>
               Copiar dirección
             </Button>
-          )}
-          {a.addressJa && (
-            <Button block icon={<Languages size={18} />} onClick={() => { setShowJa(true); setMenu(false); }}>
-              Mostrar dirección en japonés
-            </Button>
-          )}
-          {mapUrl && (
-            <a className="btn btn-secondary btn-block" href={mapUrl} target="_blank" rel="noopener noreferrer">
-              <ExternalLink size={18} aria-hidden="true" /> Abrir en Mapas (requiere conexión)
-            </a>
           )}
           {a.status !== 'omitida' ? (
             <Button block icon={<SkipForward size={18} />} onClick={() => { void setStatus('omitida'); setMenu(false); }}>
@@ -440,7 +448,6 @@ function ActivityCard({ activity: a, overlapsWith, booking, index, total, handle
           setConfirm(false);
         }}
       />
-      {showJa && <JapaneseAddressView name={a.title} address={a.addressJa} onClose={() => setShowJa(false)} />}
     </article>
   );
 }

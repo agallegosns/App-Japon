@@ -4,6 +4,7 @@ import { newId } from '../models/id';
 import {
   BOOKING_CATEGORIES,
   BOOKING_STATUSES,
+  TAX_BASES,
   type Booking,
   type BookingCategory,
 } from '../models/types';
@@ -23,9 +24,10 @@ export function emptyBooking(category: BookingCategory = 'otro'): BookingInput {
     checkIn: null,
     checkOut: null,
     address: '',
-    addressJa: '',
     legs: [],
     price: null,
+    guests: 2,
+    taxes: [],
     phone: '',
     contact: '',
     notes: '',
@@ -55,6 +57,7 @@ export function validateBooking(input: BookingInput): FieldErrors {
     else if (!/^[A-Z]{3}$/.test(input.price.currency)) errors.price = 'Moneda no válida (p. ej. EUR, JPY).';
   }
   validateLegs(errors, input);
+  validateTaxes(errors, input);
   input.links.forEach((l, i) => {
     if (!isHttpUrl(l.url)) errors[`links.${i}`] = 'El enlace debe empezar por https://';
   });
@@ -62,6 +65,17 @@ export function validateBooking(input: BookingInput): FieldErrors {
     if (ldt && !isValidTimeZone(ldt.tz)) errors.tz = 'Zona horaria no válida.';
   }
   return errors;
+}
+
+function validateTaxes(errors: FieldErrors, input: BookingInput): void {
+  if (input.category !== 'alojamiento') return;
+  if (!Number.isInteger(input.guests) || input.guests < 1 || input.guests > 30) errors.guests = 'Las personas deben ser un número entre 1 y 30.';
+  input.taxes.forEach((t, i) => {
+    if (!t.name.trim()) errors[`taxes.${i}.name`] = 'Pon un nombre a la tasa.';
+    if (!Number.isFinite(t.amount) || t.amount < 0) errors[`taxes.${i}.amount`] = 'El importe debe ser un número positivo.';
+    if (!/^[A-Z]{3}$/.test(t.currency)) errors[`taxes.${i}.amount`] = 'Moneda no válida.';
+    if (!TAX_BASES.includes(t.basis)) errors[`taxes.${i}.basis`] = 'Tipo de tasa no válido.';
+  });
 }
 
 function validateLegs(errors: FieldErrors, input: BookingInput): void {
@@ -83,6 +97,11 @@ function validateLegs(errors: FieldErrors, input: BookingInput): void {
 
 /** En vuelos con tramos, la salida y la llegada del vuelo son las del primer y último tramo. */
 export function applyLegs(input: BookingInput): BookingInput {
+  const cleaned: BookingInput = {
+    ...input,
+    taxes: input.category === 'alojamiento' ? input.taxes.map((t) => ({ ...t, name: t.name.trim() })) : [],
+  };
+  input = cleaned;
   if (input.category !== 'vuelo') return { ...input, legs: [] };
   const legs = input.legs
     .filter((l) => !isLegBlank(l))
@@ -103,7 +122,6 @@ function normalize(input: BookingInput): BookingInput {
     ...input,
     name: input.name.trim(),
     address: input.address.trim(),
-    addressJa: input.addressJa.trim(),
     phone: input.phone.trim(),
     contact: input.contact.trim(),
     links: input.links

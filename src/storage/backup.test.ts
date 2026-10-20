@@ -24,7 +24,6 @@ async function seed(d: NihonDB) {
   const b = await createBooking(d, {
     ...emptyBooking('alojamiento'),
     name: 'Hotel',
-    addressJa: '東京都千代田区丸の内1丁目',
     price: { amount: 120.5, currency: 'EUR' },
     links: [{ label: 'Web', url: 'https://example.com' }],
     checkIn: { date: '2030-04-01', time: '15:00', tz: 'Asia/Tokyo' },

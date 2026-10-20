@@ -9,7 +9,7 @@ const leg = (from: string, to: string, d: [string, string, string], a: [string, 
 function booking(id: string, category: Booking['category'], patch: Partial<Booking> = {}): Booking {
   return {
     id, name: id, category, status: 'confirmada', start: null, arrival: null, checkIn: null, checkOut: null,
-    address: '', addressJa: '', legs: [], price: null, phone: '', contact: '', notes: '', links: [],
+    address: '', legs: [], guests: 2, taxes: [], price: null, phone: '', contact: '', notes: '', links: [],
     sortAt: 1, createdAt: 1, updatedAt: 1, ...patch,
   };
 }
@@ -40,7 +40,7 @@ describe('días de vuelo', () => {
 
 describe('reservas del día', () => {
   const act = (patch: Partial<Activity>): Activity => ({
-    id: 'a', title: 't', date: '2030-05-03', startTime: null, endTime: null, tz: 'Asia/Tokyo', location: '', address: '', addressJa: '',
+    id: 'a', title: 't', date: '2030-05-03', allDay: false, startTime: null, endTime: null, tz: 'Asia/Tokyo', location: '', address: '',
     durationMin: null, notes: '', bookingId: null, status: 'pendiente', mapRef: null, order: 0, createdAt: 1, updatedAt: 1, ...patch,
   });
   const cena = booking('cena', 'restaurante', { start: { date: '2030-05-03', time: '20:00', tz: 'Asia/Tokyo' } });
@@ -56,7 +56,7 @@ describe('reservas del día', () => {
 
 describe('plan del día', () => {
   const act = (patch: Partial<Activity>): Activity => ({
-    id: 'a', title: 'Actividad', date: '2030-05-02', startTime: null, endTime: null, tz: 'Asia/Tokyo', location: '', address: '', addressJa: '',
+    id: 'a', title: 'Actividad', date: '2030-05-02', allDay: false, startTime: null, endTime: null, tz: 'Asia/Tokyo', location: '', address: '',
     durationMin: null, notes: '', bookingId: null, status: 'pendiente', mapRef: null, order: 0, createdAt: 1, updatedAt: 1, ...patch,
   });
   const cena = booking('cena', 'restaurante', { start: { date: '2030-05-02', time: '20:30', tz: 'Asia/Tokyo' } });

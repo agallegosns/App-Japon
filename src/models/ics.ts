@@ -100,9 +100,9 @@ export function activityEvents(activities: Activity[]): IcsEvent[] {
   const out: IcsEvent[] = [];
   for (const a of activities) {
     if (a.status === 'omitida') continue;
-    const desc = [a.notes, a.addressJa].filter(Boolean).join('\n');
+    const desc = a.notes;
     const location = place(a.location, a.address);
-    if (!a.startTime) {
+    if (a.allDay || !a.startTime) {
       out.push({ uid: `act-${a.id}`, summary: a.title, start: { date: a.date }, location, description: desc, alarmMinutes: 0 });
       continue;
     }
@@ -118,7 +118,7 @@ export function bookingEvents(bookings: Booking[]): IcsEvent[] {
   for (const b of bookings) {
     if (b.status === 'cancelada') continue;
     const location = place(b.address);
-    const desc = [b.addressJa, b.phone, b.notes].filter(Boolean).join('\n');
+    const desc = [b.phone, b.notes].filter(Boolean).join('\n');
     if (b.category === 'vuelo') {
       const legs = legsOf(b);
       legs.forEach((l, i) => {

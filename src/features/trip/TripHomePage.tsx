@@ -1,5 +1,6 @@
 import {
   AlertTriangle,
+  Banknote,
   BedDouble,
   ChevronRight,
   CloudDownload,
@@ -184,6 +185,7 @@ function QuickLinks() {
     { to: '/reservas?cat=vuelo', label: 'Vuelos', icon: Plane },
     { to: '/mapa', label: 'Mapa', icon: Map },
     { to: '/traductor', label: 'Traductor', icon: Languages },
+    { to: '/conversor', label: 'Yenes', icon: Banknote },
   ];
   return (
     <nav aria-label="Accesos rápidos" className="quick-links">

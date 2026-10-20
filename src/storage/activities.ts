@@ -11,12 +11,12 @@ export function emptyActivity(date: string, tz: string = DEFAULT_TZ): ActivityIn
   return {
     title: '',
     date,
+    allDay: false,
     startTime: null,
     endTime: null,
     tz,
     location: '',
     address: '',
-    addressJa: '',
     durationMin: null,
     notes: '',
     bookingId: null,
@@ -55,7 +55,8 @@ function normalize(input: ActivityInput): ActivityInput {
     title: input.title.trim(),
     location: input.location.trim(),
     address: input.address.trim(),
-    addressJa: input.addressJa.trim(),
+    // Una actividad de todo el día no tiene horas.
+    ...(input.allDay ? { startTime: null, endTime: null, durationMin: null } : {}),
   };
 }
 

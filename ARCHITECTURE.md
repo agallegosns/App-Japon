@@ -146,3 +146,17 @@ seguridad en versiones anteriores. `npm audit` informa de `sharp`/`onnxruntime-n
   / app Traducir de Apple o Google Lens, que ya son precisas y gratis. Sin decisión del usuario, se mantiene
   Tesseract + MyMemory.
 - **Días de vuelo y plan del día** son funciones puras (`dayEvents.ts`) para poder probarlas sin interfaz.
+
+## Decisiones de la v0.6.0
+
+- **Cotización euro/yen.** Tres orígenes, por orden: `referencia` (1 € = 177,32 ¥, 12 oct 2026, incluida en la app), `bce`
+  (Frankfurter, `https://api.frankfurter.dev/v1/latest?base=EUR&symbols=JPY`, tipos de referencia del BCE, gratis, sin
+  clave, CORS abierto) y `manual`. Se guarda en localStorage (`nihon.fx`) y se intenta actualizar al abrir una pantalla con
+  importes si hay conexión y han pasado más de 6 h; la manual nunca se sobrescribe sola. El BCE publica un valor medio: el
+  cambio real de la tarjeta o el cajero será algo peor, y así se avisa en la pantalla del conversor.
+- **Importes:** `parseAmount` acepta «12.500», «1.234,50», «68,5»; un punto seguido de exactamente 3 cifras se entiende como
+  separador de miles. Solo se convierten EUR y JPY.
+- **Cómo llegar:** enlace universal `https://www.google.com/maps/dir/?api=1&destination=…&travelmode=…` (sin clave, sin
+  coste). Origen: ubicación actual del teléfono. En iPhone abre la app de Google Maps si está instalada. Necesita conexión.
+- **Esquema v3:** `Booking.guests`/`taxes`, `Activity.allDay`; se elimina `addressJa` de reservas y actividades (la migración
+  borra el dato; las copias antiguas se sanean al importar).
