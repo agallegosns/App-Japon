@@ -1,0 +1,89 @@
+# CI y despliegue. Sin tareas programadas: solo se ejecuta con push o pull request.
+# - En cualquier rama: typecheck, lint, tests y build.
+# - En main: además publica en GitHub Pages.
+name: CI y despliegue
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias (versiones exactas del lockfile)
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Tests
+        run: npm test
+
+      - name: Recursos offline (mapa de prueba y modelo de traducción)
+        # Se generan una sola vez con el workflow "Recursos offline" y viven en la rama offline-assets.
+        # Si aún no existen, la app se publica igual y el Laboratorio muestra el error real.
+        run: |
+          if git ls-remote --exit-code --heads origin offline-assets >/dev/null 2>&1; then
+            git fetch --depth=1 origin offline-assets
+            mkdir -p public/offline
+            git --work-tree=public/offline checkout FETCH_HEAD -- site
+            cp -r public/offline/site/. public/offline/
+            rm -rf public/offline/site
+            echo "Recursos offline incluidos:"
+            find public/offline -type f -printf '%P %s bytes\n'
+          else
+            echo "La rama offline-assets todavía no existe: se publica sin recursos offline."
+          fi
+
+      - name: Build
+        run: npm run build
+
+      - name: Comprobar límites de GitHub Pages
+        run: |
+          total=$(du -sb dist | cut -f1)
+          echo "Tamaño total: $((total / 1048576)) MB"
+          test "$total" -lt $((900 * 1048576)) || { echo "El sitio supera 900 MB"; exit 1; }
+          big=$(find dist -type f -size +95M)
+          if [ -n "$big" ]; then echo "Archivos de más de 95 MB: $big"; exit 1; fi
+
+      - name: Subir artefacto de Pages
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

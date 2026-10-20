@@ -1,0 +1,74 @@
+/* Tokens del sistema de diseño (japonés contemporáneo, fondo claro). */
+:root {
+  /* Color */
+  --c-bg: #f7f5f1;
+  --c-surface: #ffffff;
+  --c-surface-2: #efebe4;
+  --c-border: #e1dbd1;
+  --c-border-strong: #c9c1b4;
+  --c-text: #22211f;
+  --c-text-muted: #5f5b54;
+  --c-accent: #b0302a;
+  --c-accent-hover: #942621;
+  --c-accent-soft: #f7e6e3;
+  --c-on-accent: #ffffff;
+  --c-success: #2d6a3a;
+  --c-success-soft: #e3f0e5;
+  --c-warning: #7f5300;
+  --c-warning-soft: #fbf0d9;
+  --c-danger: #a1271f;
+  --c-danger-soft: #f8e3e1;
+  --c-info: #275a83;
+  --c-info-soft: #e2edf6;
+  --c-overlay: rgb(25 22 18 / 0.45);
+  --c-focus: #1f5f99;
+
+  /* Tipografía (fuente del sistema; japonés con Noto Sans JP autoalojada) */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, 'Noto Sans JP', 'Helvetica Neue', Arial, sans-serif;
+  --font-ja: 'Noto Sans JP', -apple-system, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.875rem;
+  --fs-md: 1rem;
+  --fs-lg: 1.125rem;
+  --fs-xl: 1.375rem;
+  --fs-2xl: 1.75rem;
+  --fs-3xl: 2.25rem;
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  --lh-tight: 1.2;
+  --lh-normal: 1.45;
+
+  /* Espaciado */
+  --sp-1: 0.25rem;
+  --sp-2: 0.5rem;
+  --sp-3: 0.75rem;
+  --sp-4: 1rem;
+  --sp-5: 1.25rem;
+  --sp-6: 1.5rem;
+  --sp-8: 2rem;
+  --sp-10: 2.5rem;
+
+  /* Radios */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 22px;
+  --r-full: 999px;
+
+  /* Elevación (discreta) */
+  --shadow-1: 0 1px 2px rgb(34 33 31 / 0.06), 0 1px 1px rgb(34 33 31 / 0.04);
+  --shadow-2: 0 8px 28px rgb(34 33 31 / 0.16);
+
+  /* Táctil y layout */
+  --touch: 44px;
+  --nav-h: 56px;
+  --header-h: 52px;
+  --max-w: 720px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}

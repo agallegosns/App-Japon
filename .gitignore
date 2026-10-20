@@ -1,0 +1,31 @@
+# Dependencias y compilación
+node_modules
+dist/
+dev-dist/
+coverage/
+*.tsbuildinfo
+
+# Recursos offline generados en el build (no se versionan en main)
+public/tesseract/
+public/ort/
+public/pdfjs/
+public/offline/
+
+# Datos personales: NUNCA al repositorio
+exports/
+backups/
+datos/
+data/
+private/
+*.nihon.zip
+nihon-trip-copia-*.zip
+*.pdf
+*.heic
+capturas/
+screenshots/
+
+# Entorno
+.env
+.env.*
+.DS_Store
+*.log

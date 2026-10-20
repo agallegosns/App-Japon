@@ -1,0 +1,62 @@
+{
+  "name": "nihon-trip",
+  "private": true,
+  "version": "0.3.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "vite",
+    "prepare-assets": "node scripts/copy-offline-assets.mjs",
+    "build": "npm run prepare-assets && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b --noEmit",
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest run",
+    "ci": "npm run typecheck && npm run lint && npm run test && npm run build"
+  },
+  "dependencies": {
+    "@fontsource/noto-sans-jp": "5.3.1",
+    "@huggingface/transformers": "3.8.1",
+    "dexie": "4.0.11",
+    "fflate": "0.8.3",
+    "lucide-react": "1.60.0",
+    "maplibre-gl": "6.15.0",
+    "pdfjs-dist": "6.4.299",
+    "pmtiles": "4.5.0",
+    "react": "19.1.10",
+    "react-dom": "19.1.10",
+    "react-router-dom": "7.18.4",
+    "tesseract.js": "6.0.1",
+    "workbox-core": "7.4.1",
+    "workbox-precaching": "7.4.1",
+    "workbox-routing": "7.4.1",
+    "workbox-strategies": "7.4.1",
+    "workbox-window": "7.4.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "@tesseract.js-data/jpn": "1.0.0",
+    "@tesseract.js-data/jpn_vert": "1.0.0",
+    "@testing-library/jest-dom": "6.9.1",
+    "@testing-library/react": "16.3.3",
+    "@testing-library/user-event": "14.6.8",
+    "@types/node": "22.20.5",
+    "@types/react": "19.1.17",
+    "@types/react-dom": "19.1.11",
+    "@vitejs/plugin-react": "4.7.0",
+    "eslint": "9.39.5",
+    "eslint-plugin-react-hooks": "5.2.0",
+    "eslint-plugin-react-refresh": "0.4.26",
+    "fake-indexeddb": "6.2.6",
+    "globals": "16.5.0",
+    "jsdom": "26.1.0",
+    "tesseract.js-core": "6.1.2",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.72.0",
+    "vite": "7.3.7",
+    "vite-plugin-pwa": "1.3.0",
+    "vitest": "3.2.7"
+  }
+}

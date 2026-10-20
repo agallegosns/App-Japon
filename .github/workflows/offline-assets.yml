@@ -1,0 +1,133 @@
+# Genera los recursos offline grandes UNA SOLA VEZ (ejecución manual, nunca programada)
+# y los guarda en la rama "offline-assets". El workflow de CI los copia en cada despliegue.
+# Así un despliegue futuro no depende de servicios externos.
+#  - Extracto PMTiles del centro de Kioto (datos © OpenStreetMap, ODbL; teselas Protomaps).
+#  - Modelo Helsinki-NLP/opus-mt-ja-es convertido a ONNX cuantizado (licencia CC-BY 4.0).
+name: Recursos offline
+
+on:
+  workflow_dispatch:
+    inputs:
+      map:
+        description: Generar el extracto de mapa
+        type: boolean
+        default: true
+      model:
+        description: Convertir el modelo de traducción
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  map:
+    if: inputs.map
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Instalar go-pmtiles
+        run: |
+          curl -sSfL -o pmtiles.tar.gz https://github.com/protomaps/go-pmtiles/releases/download/v1.28.0/go-pmtiles_1.28.0_Linux_x86_64.tar.gz
+          tar -xzf pmtiles.tar.gz pmtiles
+          ./pmtiles version
+      - name: Extraer el centro de Kioto
+        run: |
+          BUILD=$(curl -sSf https://build-metadata.protomaps.dev/builds.json | jq -r '[.[] | .key] | sort | last')
+          echo "Build de Protomaps: $BUILD"
+          ./pmtiles extract "https://build.protomaps.com/$BUILD" kyoto-centro.pmtiles \
+            --bbox=135.735,34.980,135.800,35.025 --maxzoom=15
+          ./pmtiles show kyoto-centro.pmtiles
+          echo "$BUILD" > kyoto-centro.source.txt
+          ls -l kyoto-centro.pmtiles
+      - uses: actions/upload-artifact@v4
+        with:
+          name: map
+          path: |
+            kyoto-centro.pmtiles
+            kyoto-centro.source.txt
+
+  model:
+    if: inputs.model
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Descargar scripts de conversión de Transformers.js 3.8.1
+        run: |
+          git clone --depth 1 --branch 3.8.1 https://github.com/huggingface/transformers.js.git tjs
+      - name: Instalar dependencias (PyTorch CPU)
+        working-directory: tjs
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cpu
+          pip install -r scripts/requirements.txt sentencepiece==0.2.0 sacremoses==0.1.1
+      - name: Convertir Helsinki-NLP/opus-mt-ja-es a ONNX cuantizado (q8)
+        working-directory: tjs
+        run: |
+          python -m scripts.convert --quantize --modes q8 --model_id Helsinki-NLP/opus-mt-ja-es
+          ls -lR models/Helsinki-NLP/opus-mt-ja-es
+      - name: Preparar carpeta para Transformers.js
+        run: |
+          src=tjs/models/Helsinki-NLP/opus-mt-ja-es
+          out=opus-mt-ja-es
+          mkdir -p "$out/onnx"
+          for f in config.json generation_config.json tokenizer.json tokenizer_config.json quantize_config.json; do
+            if [ -f "$src/$f" ]; then cp "$src/$f" "$out/"; fi
+          done
+          cp "$src"/onnx/*_quantized.onnx "$out/onnx/"
+          test -f "$out/tokenizer.json"
+          test -f "$out/onnx/encoder_model_quantized.onnx"
+          test -f "$out/onnx/decoder_model_merged_quantized.onnx"
+          ls -l "$out" "$out/onnx"
+          find "$out" -type f -size +95M -print -exec false {} +
+      - uses: actions/upload-artifact@v4
+        with:
+          name: model
+          path: opus-mt-ja-es
+
+  publish:
+    needs: [map, model]
+    if: always() && (needs.map.result == 'success' || needs.model.result == 'success')
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Preparar la rama offline-assets
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin offline-assets >/dev/null 2>&1; then
+            git fetch origin offline-assets
+            git checkout -B offline-assets origin/offline-assets
+          else
+            git checkout --orphan offline-assets
+            git rm -rf --quiet .
+            git clean -fdx
+          fi
+          mkdir -p site/models
+      - if: needs.map.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: map
+          path: site
+      - if: needs.model.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: model
+          path: site/models/opus-mt-ja-es
+      - name: Licencias y atribución
+        run: |
+          {
+            echo "kyoto-centro.pmtiles: datos © colaboradores de OpenStreetMap, licencia ODbL 1.0 (https://www.openstreetmap.org/copyright)."
+            echo "Teselas generadas por Protomaps (https://protomaps.com)."
+            echo "models/opus-mt-ja-es: Helsinki-NLP/opus-mt-ja-es (OPUS-MT), licencia CC-BY 4.0,"
+            echo "convertido a ONNX cuantizado con los scripts de Transformers.js 3.8.1."
+          } > site/LICENCIAS.txt
+      - name: Guardar en la rama offline-assets
+        run: |
+          git add site
+          if git diff --cached --quiet; then echo "Sin cambios"; exit 0; fi
+          git commit -m "Recursos offline generados por el workflow (${{ github.run_id }})"
+          git push origin offline-assets
