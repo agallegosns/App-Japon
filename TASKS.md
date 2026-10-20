@@ -23,7 +23,13 @@ iPhone · **[pendiente]** sin hacer · **[bloqueado]** depende de algo externo.
 
 ## Fase 2 — Interfaz y navegación
 
-- [pendiente]
+- [hecho] Tokens (color, tipografía, espaciado, radios) y componentes: botón, tarjeta, campos, fecha/hora con
+  zona, hoja inferior, diálogo de confirmación (con confirmación escrita), estados vacío/carga/error, toast,
+  etiqueta de estado, segmentado, lista reordenable.
+- [hecho] Navegación inferior fija (Viaje, Itinerario, Mapa, Traductor, Reservas) con safe areas.
+- [hecho] Accesos a Ajustes y «Preparar Japón sin conexión» desde la cabecera de Viaje.
+- [hecho] Mapa y Traductor: estado honesto «En desarrollo — próxima fase» con enlace al Laboratorio.
+- [dispositivo] Revisar tamaños táctiles, safe areas (isla dinámica, barra de inicio) y Dynamic Type.
 
 ## Fase 3 — Reservas, itinerario y almacenamiento
 

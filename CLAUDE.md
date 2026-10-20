@@ -79,5 +79,5 @@ Base de publicación: `/App-Japon/` (Vite `base`, `scope` y `start_url` del mani
 
 ## Fases
 
-1. Base y Laboratorio — hecha. 2. Interfaz y navegación — pendiente. 3. Reservas, itinerario y almacenamiento —
+1. Base y Laboratorio — hecha. 2. Interfaz y navegación — hecha. 3. Reservas, itinerario y almacenamiento —
 pendiente. Después: mapas y traductor (no empezar sin que el usuario lo pida).
