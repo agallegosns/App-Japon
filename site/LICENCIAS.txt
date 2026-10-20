@@ -1,0 +1,4 @@
+kyoto-centro.pmtiles: datos © colaboradores de OpenStreetMap, licencia ODbL 1.0 (https://www.openstreetmap.org/copyright).
+Teselas generadas por Protomaps (https://protomaps.com).
+models/opus-mt-ja-es: Helsinki-NLP/opus-mt-ja-es (OPUS-MT), licencia CC-BY 4.0,
+convertido a ONNX cuantizado con los scripts de Transformers.js 3.8.1.
