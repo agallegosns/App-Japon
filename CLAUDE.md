@@ -58,6 +58,8 @@ comprobar en el iPhone, dale los pasos exactos (qué pulsar y qué debería ver)
   cotización: se indica siempre su origen y fecha.
 - **Actividades de todo el día** (`Activity.allDay`): sin horas, sin avisos de hora ni solapes.
 - **Tasas de alojamiento** (`Booking.taxes`, `Booking.guests`): importe total o por persona y noche; pagada/por pagar.
+- **Inicio = calendario + agenda del día seleccionado** (`TripCalendar`, `DayAgenda`). El botón ¥ ⇄ € vive en `PageHeader`
+  (`QuickConverter`). Animaciones: solo CSS, pocas y cortas (entrada de pantalla, pulsaciones, selección); respetar «reducir movimiento».
 - **Vocabulario:** en la interfaz se dice «actividad» (nunca «parada»).
 - **Notificaciones:** no hay push (requeriría servidor). Los avisos se hacen exportando un `.ics` al Calendario del
   iPhone (`src/models/ics.ts`, `src/features/settings/calendarActions.ts`). Horas en UTC, sin VTIMEZONE.

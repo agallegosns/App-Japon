@@ -160,3 +160,11 @@ seguridad en versiones anteriores. `npm audit` informa de `sharp`/`onnxruntime-n
   coste). Origen: ubicación actual del teléfono. En iPhone abre la app de Google Maps si está instalada. Necesita conexión.
 - **Esquema v3:** `Booking.guests`/`taxes`, `Activity.allDay`; se elimina `addressJa` de reservas y actividades (la migración
   borra el dato; las copias antiguas se sanean al importar).
+
+## Decisiones de la v0.7.0
+
+- **Animaciones:** solo CSS (`page-in` 220 ms al cambiar de ruta con `key={pathname}`, pulsaciones con `transform: scale`, `nav-pop`
+  en el icono activo). Sin librerías ni JavaScript de animación; coste de memoria despreciable. `prefers-reduced-motion` las anula
+  (regla global en `global.css`).
+- **Calendario de inicio:** funciones puras en `models/calendar.ts` (cuadrícula lunes–domingo, marcas por día). La selección es
+  estado local de la pantalla; al abrir se elige hoy (si es día del viaje) o el primer día con plan.

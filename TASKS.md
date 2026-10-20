@@ -122,6 +122,16 @@ iPhone · **[pendiente]** sin hacer · **[bloqueado]** depende de algo externo.
 - [hecho] Botón «Ordenar por hora» cuando las actividades no están en orden cronológico (el orden manual se respeta mientras no se pulse).
 - [dispositivo] Arrastrar con el dedo en la línea de tiempo y que el botón de hecho sea cómodo de pulsar.
 
+## v0.7.0 — Calendario de inicio, conversor en el menú y animaciones
+
+- [hecho] Inicio con calendario mensual (L–D, días del viaje teñidos, marcas de vuelo/actividades/reservas/hotel, «Ir a hoy») y
+  agenda automática del día seleccionado. Antes del viaje se selecciona el primer día con plan.
+- [hecho] Botón ¥ ⇄ € en el menú superior de todas las pantallas: hoja con el conversor y acceso al conversor completo.
+- [hecho] Animaciones solo con CSS: entrada de pantalla, pulsación de botones, icono activo de la barra inferior, agenda, marcar como hecha.
+- [dispositivo] Que la barra superior no quede apretada en iPhone con tres botones y que las animaciones se sientan fluidas.
+- [propuesta] Mapa: pendiente de decisión (ver conversación).
+- [propuesta] Transportes (trenes entre ciudades): pendiente de decisión (ver conversación).
+
 ## Siguientes fases (no empezar sin petición)
 
 - [pendiente] Mapa con conexión (marcadores de actividades y alojamientos, ubicación GPS).

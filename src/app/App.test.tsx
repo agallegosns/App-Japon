@@ -122,14 +122,56 @@ describe('itinerario, día de vuelo y calendario', () => {
     expect(screen.queryByText('Día de vuelo')).toBeNull();
   });
 
-  it('el inicio muestra el itinerario en lugar de «próxima actividad»', async () => {
+  it('el inicio es un calendario que enseña automáticamente lo que hay el día seleccionado', async () => {
     await seed();
     window.location.hash = '#/';
     render(<App />);
-    expect(await screen.findByText('Próximo día con plan')).toBeInTheDocument();
-    expect(screen.getByText('Vuelo QR150 Madrid (MAD) → Doha (DOH)')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Ver el itinerario completo' })).toBeInTheDocument();
+    // El viaje aún no ha empezado: se selecciona el primer día con plan (el 1 de mayo, con el vuelo).
+    expect(await screen.findByRole('region', { name: 'Calendario del viaje' })).toBeInTheDocument();
+    expect(screen.getByText('Mayo de 2030')).toBeInTheDocument();
+    const agenda = screen.getByRole('region', { name: /Agenda del/ });
+    expect(within(agenda).getByText('Vuelo QR150 Madrid (MAD) → Doha (DOH)')).toBeInTheDocument();
     expect(screen.queryByText('Próxima actividad')).toBeNull();
+
+    // Al tocar otro día, la agenda cambia sola.
+    await userEvent.click(screen.getByRole('button', { name: /jueves 2 de mayo.*día de vuelo.*1 actividad/ }));
+    const agenda2 = await screen.findByRole('region', { name: /Agenda del jueves 2 de mayo/ });
+    expect(within(agenda2).getByText('Cena en Shinjuku')).toBeInTheDocument();
+    expect(within(agenda2).getByText('Llega a las 18:00 (hora local)')).toBeInTheDocument();
+    expect(within(agenda2).getByRole('link', { name: 'Abrir el día' })).toHaveAttribute('href', '#/itinerario?fecha=2030-05-02');
+  });
+
+  it('el calendario cambia de mes y vuelve a hoy', async () => {
+    await seed();
+    window.location.hash = '#/';
+    render(<App />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Mes siguiente' }));
+    expect(screen.getByText('Junio de 2030')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Ir a hoy' }));
+    expect(screen.queryByText('Junio de 2030')).toBeNull();
+    expect(screen.queryByText('Mayo de 2030')).toBeNull();
+  });
+
+  it('un día sin nada lo dice y deja añadir una actividad', async () => {
+    await seed();
+    window.location.hash = '#/';
+    render(<App />);
+    await userEvent.click(await screen.findByRole('button', { name: /viernes 3 de mayo/ }));
+    const agenda = await screen.findByRole('region', { name: /Agenda del viernes 3 de mayo/ });
+    expect(within(agenda).getByText('No hay nada planificado este día.')).toBeInTheDocument();
+    expect(within(agenda).getByRole('link', { name: 'Añadir actividad' })).toHaveAttribute('href', '#/itinerario/nueva?fecha=2030-05-03');
+  });
+
+  it('el botón ¥ ⇄ € del menú abre el conversor en cualquier pantalla', async () => {
+    localStorage.setItem(FX_KEY, JSON.stringify({ eurToJpy: 160, date: '2030-01-01', source: 'manual', fetchedAt: Date.now() }));
+    reloadRateFromStorage();
+    window.location.hash = '#/reservas';
+    render(<App />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Abrir el conversor de yenes y euros' }));
+    await userEvent.type(await screen.findByLabelText('Yenes (¥)'), '16000');
+    expect(screen.getByLabelText('Euros (€)')).toHaveValue('100');
+    localStorage.clear();
+    reloadRateFromStorage();
   });
 
   it('Ajustes explica las notificaciones y avisa si no hay nada que exportar al calendario', async () => {

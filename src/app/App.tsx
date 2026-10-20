@@ -60,6 +60,16 @@ export function AppRoutes() {
   );
 }
 
+/** Cada cambio de pantalla entra con un fundido suave (CSS, sin librerías). */
+function AnimatedRoutes() {
+  const { pathname } = useLocation();
+  return (
+    <div key={pathname} className="page-transition">
+      <AppRoutes />
+    </div>
+  );
+}
+
 export function App() {
   return (
     <HashRouter>
@@ -68,7 +78,7 @@ export function App() {
         <div className="app">
           <main className="app-main">
             <GlobalBanners />
-            <AppRoutes />
+            <AnimatedRoutes />
           </main>
           <BottomNav />
         </div>

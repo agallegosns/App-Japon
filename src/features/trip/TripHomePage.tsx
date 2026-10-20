@@ -13,10 +13,12 @@ import {
   ShieldCheck,
   Ticket,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useOnline } from '../../app/useConnectivity';
-import { capitalize, formatDateRange, formatDayLong, formatLdt } from '../../models/datetime';
+import { calendarMarkers, monthOf } from '../../models/calendar';
+import { homeDay } from '../../models/dayEvents';
+import { capitalize, formatDateRange, formatDayLong, formatLdt, nowInZone } from '../../models/datetime';
 import { CATEGORY_LABEL } from '../../models/labels';
 import { hasAnyData, useAppData, type AppData } from '../../storage/appData';
 import { backupReminder } from '../../storage/meta';
@@ -27,7 +29,8 @@ import { Notice } from '../../ui/Notice';
 import { PageHeader } from '../../ui/PageHeader';
 import { EmptyState, ErrorState, LoadingState } from '../../ui/States';
 import { StatusTag } from '../../ui/StatusTag';
-import { DayPlan } from './DayPlan';
+import { DayAgenda } from './DayAgenda';
+import { TripCalendar } from './TripCalendar';
 import { pendingInfo } from './pendingInfo';
 import { currentDay, nextBooking, tripPhase } from './tripStatus';
 
@@ -57,6 +60,12 @@ function TripHome({ data }: { data: AppData }) {
     const t = window.setInterval(() => setNow(Date.now()), 60_000);
     return () => window.clearInterval(t);
   }, []);
+  const today = nowInZone(data.trip?.tz ?? 'Asia/Tokyo', now).date;
+  const [selected, setSelected] = useState<string>(
+    () => homeDay(today, data.days, data.activities, data.bookings) ?? (data.trip && today < data.trip.startDate ? data.trip.startDate : today),
+  );
+  const [month, setMonth] = useState(() => monthOf(selected));
+  const markers = useMemo(() => calendarMarkers(data.activities, data.bookings), [data.activities, data.bookings]);
   const reminder = backupReminder(data.backup, hasAnyData(data), now);
   const pending = pendingInfo(data);
 
@@ -71,9 +80,23 @@ function TripHome({ data }: { data: AppData }) {
 
       <TripSummary data={data} now={now} />
 
-      <QuickLinks />
+      {data.trip && (
+        <>
+          <TripCalendar
+            month={month}
+            onMonthChange={setMonth}
+            selected={selected}
+            onSelect={setSelected}
+            today={today}
+            tripStart={data.trip.startDate}
+            tripEnd={data.trip.endDate}
+            markers={markers}
+          />
+          <DayAgenda date={selected} today={today} data={data} />
+        </>
+      )}
 
-      <DayPlan data={data} trip={data.trip} />
+      <QuickLinks />
 
       <Card title="Próxima reserva">
         {(() => {
@@ -147,7 +170,7 @@ function TripSummary({ data, now }: { data: AppData; now: number }) {
   const phase = tripPhase(trip, now);
   const today = phase.phase === 'during' ? currentDay(data.days, trip, now) : null;
   return (
-    <section className="hero" aria-label="Resumen del viaje">
+    <section className="hero hero-compact" aria-label="Resumen del viaje">
       <div className="hero-top">
         <div className="grow">
           <p className="hero-kicker">

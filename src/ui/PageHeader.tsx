@@ -1,6 +1,7 @@
 import { ChevronLeft } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { QuickConverter } from '../features/converter/QuickConverter';
 import { Button } from './Button';
 
 interface PageHeaderProps {
@@ -9,9 +10,11 @@ interface PageHeaderProps {
   /** Ruta a la que volver; si es true, vuelve en el historial. */
   back?: string | true;
   actions?: ReactNode;
+  /** No mostrar el botón del conversor rápido (la propia pantalla del conversor). */
+  noConverter?: boolean;
 }
 
-export function PageHeader({ title, subtitle, back, actions }: PageHeaderProps) {
+export function PageHeader({ title, subtitle, back, actions, noConverter }: PageHeaderProps) {
   const navigate = useNavigate();
   return (
     <header className="page-header">
@@ -34,7 +37,10 @@ export function PageHeader({ title, subtitle, back, actions }: PageHeaderProps) 
           <h1>{title}</h1>
           {subtitle && <p className="muted small">{subtitle}</p>}
         </div>
-        {actions && <div className="row">{actions}</div>}
+        <div className="row">
+          {!noConverter && <QuickConverter />}
+          {actions}
+        </div>
       </div>
     </header>
   );

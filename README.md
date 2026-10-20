@@ -35,7 +35,9 @@ existen en cada iPhone y en las copias de seguridad que hagas.
   Las reservas del día (restaurantes, entradas, trenes) salen aparte. Botón del calendario arriba a la derecha.
 - **Yenes y euros:** conversor en el inicio (botón «Yenes»). La cotización se actualiza sola con conexión (BCE) y se
   guarda en el móvil; también puedes escribir la que te aplique tu banco. Sin conexión usa la última guardada.
-- **Inicio:** tarjeta del viaje con cuenta atrás y el **itinerario de hoy** (o del próximo día con plan).
+- **Inicio:** un **calendario** del viaje. Cada día marca si hay vuelo (avión), actividades, reservas o cambio de hotel, y debajo se
+  ve automáticamente la agenda del día seleccionado (hoy, o el primer día con plan antes del viaje).
+- **Menú superior:** el botón **¥ ⇄ €** está en todas las pantallas y abre el conversor sin salir de donde estás.
 - **Traductor:** cámara japonés → español. Necesita Internet (la foto no sale del móvil; solo el texto reconocido
   se envía a MyMemory, límite gratuito ≈ 5 000 caracteres/día).
 - **Mapa:** en desarrollo; necesitará Internet.
